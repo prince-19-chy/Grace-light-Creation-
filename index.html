@@ -1,113 +1,333 @@
-
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ZARQO — Refined Quality. Worn Right.</title>
-  <link rel="stylesheet" href="assets/style.css" />
-  <meta name="description" content="ZARQO — Premium Clothing & Footwear (Head to Toe).">
-</head>
-<body>
-  <!-- ==================================================
-       ZARQO — HOMEPAGE
-       Comments: Wherever you see CHANGE/HERE comments, edit those lines.
-       Replace image src with your own uploaded image paths (images/yourfile.jpg).
-       ================================================== -->
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gracelight Creations - Digital Marketing Agency</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      box-sizing: border-box;
+      font-family: 'Sora', sans-serif;
+    }
+    
+    .page-section {
+      display: none;
+    }
+    
+    .page-section.active {
+      display: block;
+    }
+    
+    .nav-link.active {
+      color: #a78bfa !important;
+      font-weight: 600;
+    }
+    
+    .nav-link:hover {
+      color: #a78bfa !important;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .page-section.active {
+      animation: fadeIn 0.4s ease-out;
+    }
+    
+    /* WhatsApp Button Animation */
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    
+    .whatsapp-btn {
+      animation: pulse 2s infinite;
+    }
+    
+    /* Logo styling */
+    .logo-container {
+      transition: transform 0.3s ease;
+    }
+    
+    .logo-container:hover {
+      transform: scale(1.05);
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full bg-slate-950 text-white">
+  <div id="app-container" class="w-full h-full overflow-auto">
+   
+   <!-- WhatsApp Floating Button -->
+   <div class="fixed bottom-6 right-6 z-50">
+    <a href="https://wa.me/919876543210?text=Hi%20Gracelight%20Creations!%20I'm%20interested%20in%20your%20services" 
+       target="_blank" 
+       class="whatsapp-btn block w-14 h-14 bg-[#25D366] rounded-full flex items-center justify-center shadow-lg hover:shadow-2xl hover:shadow-[#25D366]/50 transition-all duration-300 group">
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="white">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.074-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.521.149-.173.198-.297.298-.496.099-.198.05-.371-.025-.521-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.012-.57-.012-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.226 1.36.194 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.76.982.998-3.677-.236-.375a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.9 6.994c-.004 5.45-4.438 9.88-9.888 9.88m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.333.158 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.304-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.333 11.89-11.893 0-3.18-1.24-6.162-3.495-8.411"/>
+      </svg>
+      <span class="absolute -top-2 -right-2 bg-white text-[#25D366] text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center group-hover:scale-110 transition-transform">
+        ↓
+      </span>
+    </a>
+   </div>
 
-  <header class="site-header">
-    <div class="container header-inner">
-      <div class="brand">ZARQO</div>
-      <nav class="main-nav">
-        <a href="index.html">Home</a>
-        <a href="shop.html">Shop</a>
-        <a href="about.html">About</a>
-        <a href="contact.html">Contact</a>
-        <a href="cart.html" class="cart-link">Cart (<span id="cart-count">0</span>)</a>
-      </nav>
+   <!-- Navigation -->
+   <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-slate-950/80 border-b border-purple-500/20">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+     <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3 logo-container">
+       <!-- Logo Image - Replace with your actual logo path -->
+       <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
+        <!-- If you have an actual logo image, use this: -->
+        <!-- <img src="your-logo.png" alt="Gracelight Creations Logo" class="w-full h-full object-cover"> -->
+        
+        <!-- Temporary text logo until you add image -->
+        <span class="font-bold text-lg text-white">G</span>
+       </div>
+       <span class="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Gracelight Creations</span>
+      </div>
+      <div class="hidden md:flex items-center gap-6">
+        <a href="#" data-page="home" class="nav-link active text-sm font-medium text-purple-400 transition-colors">Home</a>
+        <a href="#" data-page="about" class="nav-link text-sm text-gray-300 hover:text-purple-400 transition-colors">About</a>
+        <a href="#" data-page="services" class="nav-link text-sm text-gray-300 hover:text-purple-400 transition-colors">Services</a>
+        <a href="#" data-page="portfolio" class="nav-link text-sm text-gray-300 hover:text-purple-400 transition-colors">Portfolio</a>
+        <a href="#" data-page="industries" class="nav-link text-sm text-gray-300 hover:text-purple-400 transition-colors">Industries</a>
+        <a href="#" data-page="pricing" class="nav-link text-sm text-gray-300 hover:text-purple-400 transition-colors">Pricing</a>
+        <a href="#" data-page="testimonials" class="nav-link text-sm text-gray-300 hover:text-purple-400 transition-colors">Testimonials</a>
+        <a href="#" data-page="contact" class="px-5 py-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg text-sm font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all">Contact</a>
+      </div>
+      <button id="mobile-menu-toggle" class="md:hidden p-2">
+       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+       </svg>
+      </button>
+     </div>
+     <div id="mobile-menu" class="hidden md:hidden mt-4 pb-4 space-y-3">
+      <a href="#" data-page="home" class="block nav-link active text-purple-400 font-medium transition-colors">Home</a>
+      <a href="#" data-page="about" class="block nav-link text-gray-300 hover:text-purple-400 transition-colors">About</a>
+      <a href="#" data-page="services" class="block nav-link text-gray-300 hover:text-purple-400 transition-colors">Services</a>
+      <a href="#" data-page="portfolio" class="block nav-link text-gray-300 hover:text-purple-400 transition-colors">Portfolio</a>
+      <a href="#" data-page="industries" class="block nav-link text-gray-300 hover:text-purple-400 transition-colors">Industries</a>
+      <a href="#" data-page="pricing" class="block nav-link text-gray-300 hover:text-purple-400 transition-colors">Pricing</a>
+      <a href="#" data-page="testimonials" class="block nav-link text-gray-300 hover:text-purple-400 transition-colors">Testimonials</a>
+      <a href="#" data-page="contact" class="block nav-link text-gray-300 hover:text-purple-400 transition-colors">Contact</a>
+     </div>
     </div>
-  </header>
+   </nav>
 
-  <main>
-    <!-- HERO -->
-    <section class="hero container">
-      <div class="hero-left">
-        <h1>ZARQO</h1>
-        <p class="subtitle">Zone of Authentic Refined Quality Outfits — premium wear from head to toe.</p>
-        <div class="hero-actions">
-          <a href="shop.html" class="btn btn-primary">Shop Now</a>
-          <a href="#full-fit" class="btn btn-outline">Buy Full Fit</a>
-        </div>
-        <ul class="features">
-          <li>Cash on Delivery — Nepal wide</li>
-          <li>Quality-checked products</li>
-          <li>30 days returns (change later in policy)</li>
+   <!-- HOME PAGE -->
+   <section id="home" class="page-section active pt-24">
+    <div class="max-w-7xl mx-auto px-6 py-20">
+     <div class="text-center max-w-4xl mx-auto mb-20">
+      <div class="inline-block mb-6 px-6 py-2 rounded-full bg-purple-500/20 border border-purple-500/40">
+       <span class="text-purple-300 font-semibold">✨ Trusted by 150+ Growing Businesses</span>
+      </div>
+      <h1 id="hero-headline" class="text-5xl md:text-7xl font-bold mb-6 leading-tight bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">Transform Your Digital Presence Into Growth</h1>
+      <p id="hero-subheading" class="text-xl text-gray-400 mb-10 leading-relaxed">We help businesses unlock their full potential through creative content marketing, stunning designs, and data-driven strategies that deliver measurable results.</p>
+      <div class="flex flex-wrap gap-4 justify-center mb-12">
+        <a href="#" data-page="contact" class="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all">Get Free Consultation</a>
+        <a href="#" data-page="portfolio" class="px-8 py-4 border border-purple-500/50 rounded-xl font-semibold hover:bg-purple-500/10 transition-all">View Our Work</a>
+      </div>
+      
+      <!-- Stats Bar -->
+      <div class="flex flex-wrap justify-center gap-8 text-center">
+       <div>
+        <div class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">150+</div>
+        <div class="text-sm text-gray-500">Happy Clients</div>
+       </div>
+       <div class="w-px h-12 bg-purple-500/30"></div>
+       <div>
+        <div class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">500+</div>
+        <div class="text-sm text-gray-500">Projects Completed</div>
+       </div>
+       <div class="w-px h-12 bg-purple-500/30"></div>
+       <div>
+        <div class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">98%</div>
+        <div class="text-sm text-gray-500">Client Retention</div>
+       </div>
+       <div class="w-px h-12 bg-purple-500/30"></div>
+       <div>
+        <div class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">5.0★</div>
+        <div class="text-sm text-gray-500">Average Rating</div>
+       </div>
+      </div>
+     </div>
+     
+     <!-- Services Overview -->
+     <div class="mb-20">
+      <h2 class="text-3xl font-bold text-center mb-12">What We Do Best</h2>
+      <div class="grid md:grid-cols-3 gap-6">
+       <div class="p-8 rounded-2xl bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/20 hover:border-purple-500/50 transition-all group">
+        <div class="text-5xl mb-4 group-hover:scale-110 transition-transform">🎨</div>
+        <h3 class="text-xl font-bold mb-3">Social Media & Design</h3>
+        <p class="text-gray-400 mb-4">Engaging content and stunning visuals that stop the scroll and drive engagement across all platforms.</p>
+        <ul class="space-y-2 text-sm text-gray-500">
+         <li>✓ Content Strategy & Planning</li>
+         <li>✓ Instagram, Facebook, LinkedIn</li>
+         <li>✓ Daily Posting & Scheduling</li>
+         <li>✓ Community Management</li>
         </ul>
+       </div>
+       <div class="p-8 rounded-2xl bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/20 hover:border-purple-500/50 transition-all group">
+        <div class="text-5xl mb-4 group-hover:scale-110 transition-transform">🎬</div>
+        <h3 class="text-xl font-bold mb-3">Video Production</h3>
+        <p class="text-gray-400 mb-4">Professional video editing for reels, shorts, and promos that capture attention and tell your story.</p>
+        <ul class="space-y-2 text-sm text-gray-500">
+         <li>✓ Reels & Short-Form Videos</li>
+         <li>✓ YouTube Content</li>
+         <li>✓ Promotional Videos</li>
+         <li>✓ Motion Graphics</li>
+        </ul>
+       </div>
+       <div class="p-8 rounded-2xl bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/20 hover:border-purple-500/50 transition-all group">
+        <div class="text-5xl mb-4 group-hover:scale-110 transition-transform">💻</div>
+        <h3 class="text-xl font-bold mb-3">Web Development</h3>
+        <p class="text-gray-400 mb-4">Modern, responsive websites that convert visitors into customers and grow your business online.</p>
+        <ul class="space-y-2 text-sm text-gray-500">
+         <li>✓ Custom Website Design</li>
+         <li>✓ Mobile-First Approach</li>
+         <li>✓ SEO Optimization</li>
+         <li>✓ Fast Loading Speed</li>
+        </ul>
+       </div>
       </div>
-
-      <div class="hero-right">
-        <!-- CHANGE IMAGE HERE: Replace this URL with your image inside /images folder, e.g. images/hero.jpg -->
-        <img alt="Full outfit" src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=1400&q=80" />
-        <div class="hero-tag">Buy the Full Fit</div>
+     </div>
+     
+     <!-- Why Choose Us -->
+     <div class="mb-20">
+      <div class="text-center mb-12">
+       <h2 class="text-3xl font-bold mb-4">Why Businesses Choose Gracelight</h2>
+       <p class="text-gray-400">We're not just another agency — we're your growth partner</p>
       </div>
-    </section>
-
-    <!-- CATEGORIES -->
-    <section class="categories container">
-      <h2>Shop by Category</h2>
-      <div class="category-grid">
-        <a class="category-card" href="shop.html#headwear">🧢 Headwear</a>
-        <a class="category-card" href="shop.html#tops">👕 Tops</a>
-        <a class="category-card" href="shop.html#bottoms">👖 Bottoms</a>
-        <a class="category-card" href="shop.html#footwear">👟 Footwear</a>
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+       <div class="p-6 rounded-xl bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-500/20 text-center">
+        <div class="text-4xl mb-3">⚡</div>
+        <h4 class="font-bold mb-2">Lightning Fast Delivery</h4>
+        <p class="text-sm text-gray-400">Get your projects delivered on time, every time. Quick turnaround without compromising quality.</p>
+       </div>
+       <div class="p-6 rounded-xl bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-500/20 text-center">
+        <div class="text-4xl mb-3">💰</div>
+        <h4 class="font-bold mb-2">Transparent Pricing</h4>
+        <p class="text-sm text-gray-400">No hidden fees or surprises. Clear, competitive pricing that fits your budget and delivers value.</p>
+       </div>
+       <div class="p-6 rounded-xl bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-500/20 text-center">
+        <div class="text-4xl mb-3">📊</div>
+        <h4 class="font-bold mb-2">Data-Driven Results</h4>
+        <p class="text-sm text-gray-400">Every decision backed by analytics. We track what matters and optimize for maximum ROI.</p>
+       </div>
+       <div class="p-6 rounded-xl bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-500/20 text-center">
+        <div class="text-4xl mb-3">🤝</div>
+        <h4 class="font-bold mb-2">Dedicated Support</h4>
+        <p class="text-sm text-gray-400">24/7 support whenever you need us. Your dedicated account manager is just a call away.</p>
+       </div>
       </div>
-    </section>
-
-    <!-- FEATURED PRODUCTS -->
-    <section class="featured container">
-      <h2>Featured Products</h2>
-      <div class="product-grid">
-        <!-- PRODUCT 1 - CHANGE IMAGE/PRICE/NAME HERE -->
-        <article class="product-card" data-id="p1" data-name="ZARQO Classic Tee" data-price="1199">
-          <img src="https://images.unsplash.com/photo-1520975916299-57b8f9f7f1c9?w=900&q=80" alt="Classic Tee" />
-          <div class="product-body">
-            <h3>ZARQO Classic Tee</h3>
-            <div class="price">Rs <span class="price-value">1199</span></div>
-            <div class="product-actions">
-              <button class="btn btn-add" onclick="addToCart('p1')">Add to Cart</button>
-              <a href="product.html?p=p1" class="btn btn-outline">View</a>
-            </div>
-          </div>
-        </article>
-
-        <!-- PRODUCT 2 - CHANGE IMAGE/PRICE/NAME HERE -->
-        <article class="product-card" data-id="p2" data-name="Urban Runner Sneakers" data-price="3499">
-          <img src="https://images.unsplash.com/photo-1600180758890-ecf0eebf09cf?w=900&q=80" alt="Sneakers" />
-          <div class="product-body">
-            <h3>Urban Runner Sneakers</h3>
-            <div class="price">Rs <span class="price-value">3499</span></div>
-            <div class="product-actions">
-              <button class="btn btn-add" onclick="addToCart('p2')">Add to Cart</button>
-              <a href="product.html?p=p2" class="btn btn-outline">View</a>
-            </div>
-          </div>
-        </article>
-
-        <!-- PRODUCT 3 - CHANGE IMAGE/PRICE/NAME HERE -->
-        <article class="product-card" data-id="p3" data-name="Tailored Chino" data-price="1999">
-          <img src="https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=900&q=80" alt="Chino" />
-          <div class="product-body">
-            <h3>Tailored Chino</h3>
-            <div class="price">Rs <span class="price-value">1999</span></div>
-            <div class="product-actions">
-              <button class="btn btn-add" onclick="addToCart('p3')">Add to Cart</button>
-              <a href="product.html?p=p3" class="btn btn-outline">View</a>
-            </div>
-          </div>
-        </article>
-
-        <!-- PRODUCT 4 - CHANGE IMAGE/PRICE/NAME HERE -->
-        <article class="product-card" data-id="p4" data-name="Full Fit Pack" data-price="6999">
+     </div>
+     
+     <!-- Success Stories Preview -->
+     <div class="mb-20 p-12 rounded-3xl bg-gradient-to-br from-teal-900/40 to-cyan-900/40 border border-teal-500/30">
+      <div class="text-center mb-10">
+       <h2 class="text-3xl font-bold mb-4">Real Results, Real Impact</h2>
+       <p class="text-gray-400">See what our clients have achieved with Gracelight</p>
+      </div>
+      <div class="grid md:grid-cols-3 gap-8">
+       <div class="text-center">
+        <div class="text-5xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-2">+340%</div>
+        <div class="text-gray-400 mb-2">Engagement Increase</div>
+        <div class="text-sm text-gray-500">Restaurant Social Media Campaign</div>
+       </div>
+       <div class="text-center">
+        <div class="text-5xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-2">2x</div>
+        <div class="text-gray-400 mb-2">Student Enrollment</div>
+        <div class="text-sm text-gray-500">Educational Institution Strategy</div>
+       </div>
+       <div class="text-center">
+        <div class="text-5xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent mb-2">5x</div>
+        <div class="text-gray-400 mb-2">Return on Ad Spend</div>
+        <div class="text-sm text-gray-500">E-commerce Performance Campaign</div>
+       </div>
+      </div>
+      <div class="text-center mt-10">
+       <a href="#" data-page="testimonials" class="inline-flex items-center gap-2 text-teal-400 hover:text-teal-300 transition-colors">Read All Success Stories <span>→</span></a>
+      </div>
+     </div>
+     
+     <!-- Process Section -->
+     <div class="mb-20">
+      <div class="text-center mb-12">
+       <h2 class="text-3xl font-bold mb-4">Our Proven Process</h2>
+       <p class="text-gray-400">From strategy to execution — here's how we work</p>
+      </div>
+      <div class="grid md:grid-cols-4 gap-6">
+       <div class="relative">
+        <div class="p-6 rounded-xl bg-gradient-to-br from-teal-900/30 to-cyan-900/30 border border-teal-500/20 h-full">
+         <div class="w-12 h-12 rounded-full bg-gradient-to-r from-teal-500 to-amber-500 flex items-center justify-center font-bold text-xl mb-4">1</div>
+         <h4 class="font-bold mb-2">Discovery Call</h4>
+         <p class="text-sm text-gray-400">We learn about your business, goals, and challenges in a free consultation.</p>
+        </div>
+        <div class="hidden md:block absolute top-1/2 -right-3 w-6 h-0.5 bg-gradient-to-r from-teal-500 to-transparent"></div>
+       </div>
+       <div class="relative">
+        <div class="p-6 rounded-xl bg-gradient-to-br from-teal-900/30 to-cyan-900/30 border border-teal-500/20 h-full">
+         <div class="w-12 h-12 rounded-full bg-gradient-to-r from-teal-500 to-amber-500 flex items-center justify-center font-bold text-xl mb-4">2</div>
+         <h4 class="font-bold mb-2">Strategy Blueprint</h4>
+         <p class="text-sm text-gray-400">We create a customized strategy tailored to your specific needs and budget.</p>
+        </div>
+        <div class="hidden md:block absolute top-1/2 -right-3 w-6 h-0.5 bg-gradient-to-r from-teal-500 to-transparent"></div>
+       </div>
+       <div class="relative">
+        <div class="p-6 rounded-xl bg-gradient-to-br from-teal-900/30 to-cyan-900/30 border border-teal-500/20 h-full">
+         <div class="w-12 h-12 rounded-full bg-gradient-to-r from-teal-500 to-amber-500 flex items-center justify-center font-bold text-xl mb-4">3</div>
+         <h4 class="font-bold mb-2">Creative Execution</h4>
+         <p class="text-sm text-gray-400">Our team brings your strategy to life with stunning content and campaigns.</p>
+        </div>
+        <div class="hidden md:block absolute top-1/2 -right-3 w-6 h-0.5 bg-gradient-to-r from-teal-500 to-transparent"></div>
+       </div>
+       <div>
+        <div class="p-6 rounded-xl bg-gradient-to-br from-teal-900/30 to-cyan-900/30 border border-teal-500/20 h-full">
+         <div class="w-12 h-12 rounded-full bg-gradient-to-r from-teal-500 to-amber-500 flex items-center justify-center font-bold text-xl mb-4">4</div>
+         <h4 class="font-bold mb-2">Optimize & Scale</h4>
+         <p class="text-sm text-gray-400">We monitor performance, optimize continuously, and scale what works best.</p>
+        </div>
+       </div>
+      </div>
+     </div>
+     
+     <!-- Special Offer -->
+     <div class="mb-20 p-10 rounded-3xl bg-gradient-to-r from-teal-600/30 to-amber-600/30 border border-teal-500/40 relative overflow-hidden">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl"></div>
+      <div class="relative z-10">
+       <div class="flex flex-wrap items-center justify-between gap-8">
+        <div class="flex-1">
+         <div class="inline-block px-4 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-sm font-bold mb-4">🎉 LIMITED TIME OFFER</div>
+         <h3 class="text-3xl font-bold mb-3">Get a FREE Website Worth Rs 50,000!</h3>
+         <p class="text-gray-300 mb-4">Sign up for our 6-month Complete Growth Package and get a professional website absolutely free. Offer valid until end of month!</p>
+         <ul class="space-y-2 text-sm text-gray-400">
+          <li>✓ Custom website design & development</li>
+          <li>✓ Mobile responsive & SEO optimized</li>
+          <li>✓ Free hosting for first 6 months</li>
+          <li>✓ Plus all Complete Growth Package benefits</li>
+         </ul>
+        </div>
+        <div class="text-center">
+          <a href="#" data-page="contact" class="inline-block px-8 py-4 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl font-bold hover:shadow-lg hover:shadow-yellow-500/50 transition-all">Claim This Offer →</a>
+          <div class="text-sm text-gray-400 mt-3">Only 5 spots remaining!</div>
+        </div>
+       </div>
+      </div>
+     </div>
+     
+     <!-- CTA Section -->
+     <div class="text-c        <article class="product-card" data-id="p4" data-name="Full Fit Pack" data-price="6999">
           <img src="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=900&q=80" alt="Full Fit" />
           <div class="product-body">
             <h3>Full Fit Pack</h3>
