@@ -1,0 +1,1883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gracelight Creations — Admin Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Official Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { font-family: 'Sora', sans-serif; }
+    body { background: #0f172a; color: white; }
+
+    /* NEW: Mobile sidebar */
+    .sidebar {
+      background: linear-gradient(180deg, rgba(15,23,42,0.97) 0%, rgba(30,27,75,0.97) 100%);
+      backdrop-filter: blur(10px);
+      border-right: 1px solid rgba(168,85,247,0.3);
+      transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+    }
+    @media (max-width: 768px) {
+      .sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; transform: translateX(-100%); width: 280px !important; }
+      .sidebar.mobile-open { transform: translateX(0); }
+      .mobile-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 99; display: none; }
+      .mobile-overlay.active { display: block; }
+      #dashboard { flex-direction: column; }
+      .main-content { margin-left: 0 !important; }
+      .mobile-header { display: flex !important; }
+    }
+    .mobile-header { display: none; }
+
+    /* Mouse cruiser for dashboard */
+    #dash-cruiser {
+      position: fixed; width: 28px; height: 28px;
+      border: 2px solid rgba(168,85,247,0.7);
+      border-radius: 50%; pointer-events: none; z-index: 200;
+      transform: translate(-50%, -50%);
+      transition: width 0.2s, height 0.2s, border-color 0.2s;
+      box-shadow: 0 0 8px rgba(168,85,247,0.3);
+    }
+    #dash-cruiser.hovered { width: 46px; height: 46px; border-color: rgba(236,72,153,0.8); }
+    #dash-cruiser.clicking { width: 18px; height: 18px; }
+    @media (hover: none) { #dash-cruiser { display: none; } }
+    .sidebar-link {
+      transition: all 0.25s ease;
+      border-left: 3px solid transparent;
+    }
+    .sidebar-link.active {
+      background: rgba(168,85,247,0.2);
+      border-left-color: #a78bfa;
+      color: #a78bfa;
+    }
+    .sidebar-link:hover:not(.active) { background: rgba(168,85,247,0.1); }
+
+    .card {
+      background: linear-gradient(145deg, rgba(30,27,75,0.5) 0%, rgba(15,23,42,0.8) 100%);
+      border: 1px solid rgba(168,85,247,0.3);
+      backdrop-filter: blur(10px);
+      border-radius: 1rem;
+      transition: all 0.3s ease;
+    }
+    .card:hover { border-color: rgba(168,85,247,0.7); transform: translateY(-2px); }
+
+    .btn-primary {
+      background: linear-gradient(to right, #a855f7, #ec4899);
+      transition: all 0.25s ease;
+    }
+    .btn-primary:hover { transform: scale(1.04); box-shadow: 0 0 18px rgba(168,85,247,0.5); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      background: rgba(168,85,247,0.15);
+      border: 1px solid rgba(168,85,247,0.4);
+      transition: all 0.25s ease;
+    }
+    .btn-secondary:hover { background: rgba(168,85,247,0.3); }
+
+    .form-input {
+      background: rgba(15,23,42,0.8);
+      border: 1px solid rgba(168,85,247,0.3);
+      border-radius: 0.75rem;
+      color: white;
+      transition: all 0.25s ease;
+    }
+    .form-input:focus {
+      border-color: #a78bfa;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(168,85,247,0.25);
+    }
+    .form-input option { background: #1e1b4b; }
+
+    .table-row {
+      border-bottom: 1px solid rgba(168,85,247,0.15);
+      transition: background 0.2s;
+    }
+    .table-row:hover { background: rgba(168,85,247,0.08); }
+
+    .modal-overlay {
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(4px);
+    }
+    .modal-box {
+      background: linear-gradient(145deg, #1e1b4b 0%, #0f172a 100%);
+      border: 1px solid rgba(168,85,247,0.5);
+    }
+
+    .badge-unread {
+      background: rgba(239,68,68,0.2);
+      color: #ef4444;
+      border: 1px solid rgba(239,68,68,0.4);
+    }
+    .badge-read {
+      background: rgba(34,197,94,0.2);
+      color: #22c55e;
+      border: 1px solid rgba(34,197,94,0.4);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      transform: translateX(120%); transition: transform 0.35s cubic-bezier(.16,1,.3,1);
+    }
+    #toast.show { transform: translateX(0); }
+
+    /* Loading skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(168,85,247,0.1) 25%, rgba(168,85,247,0.2) 50%, rgba(168,85,247,0.1) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 0.5rem;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* Login page */
+    #login-page {
+      background: radial-gradient(ellipse at 50% 0%, rgba(168,85,247,0.3) 0%, transparent 60%), #0f172a;
+    }
+
+    /* NEW: Avatar style selector */
+    .avatar-style-option input:checked + div {
+      border-color: #a855f7 !important;
+      background: rgba(168,85,247,0.2);
+    }
+    .emoji-option.selected { box-shadow: 0 0 0 2px rgba(168,85,247,0.7); }
+  </style>
+</head>
+<body class="h-screen overflow-hidden">
+
+<div id="dash-cruiser"></div>
+<div id="mobile-overlay" class="mobile-overlay" onclick="closeMobileSidebar()"></div>
+
+<!-- ==================== TOAST ==================== -->
+<div id="toast">
+  <div class="px-6 py-4 rounded-xl bg-gradient-to-r from-purple-900/95 to-pink-900/95 border border-purple-500/50 shadow-2xl flex items-center gap-3 min-w-72">
+    <span id="toast-icon" class="text-2xl">✅</span>
+    <span id="toast-message" class="font-medium text-sm">Success!</span>
+  </div>
+</div>
+
+<!-- ==================== LOGIN PAGE ==================== -->
+<div id="login-page" class="h-screen flex items-center justify-center hidden">
+  <div class="card p-10 w-full max-w-md mx-4">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-4">
+        <img src="logo.jpeg" alt="Gracelight Logo" class="w-full h-full object-cover">
+      </div>
+      <h1 class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Gracelight Admin</h1>
+      <p class="text-gray-400 text-sm mt-1">Sign in to manage your website</p>
+    </div>
+    <form id="login-form" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-2 text-gray-300">Email</label>
+        <input type="email" id="login-email"
+          class="form-input w-full px-4 py-3" placeholder="admin@gracelight.com" required>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-2 text-gray-300">Password</label>
+        <input type="password" id="login-password"
+          class="form-input w-full px-4 py-3" placeholder="••••••••" required>
+      </div>
+      <button type="submit" id="login-btn" class="btn-primary w-full py-3 rounded-xl font-bold mt-2 flex items-center justify-center gap-2">
+        <i class="fas fa-sign-in-alt"></i> Sign In
+      </button>
+      <p id="login-error" class="text-red-400 text-sm text-center hidden"></p>
+    </form>
+    <p class="text-xs text-gray-500 text-center mt-6">Default: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2243464f4b4c6245504341474e4b454a5641504743564b4d4c510c414d4f">[email&#160;protected]</a> / admin123</p>
+  </div>
+</div>
+
+<!-- ==================== DASHBOARD ==================== -->
+<div id="dashboard" class="h-screen flex hidden">
+
+  <!-- Mobile Header Bar -->
+  <div class="mobile-header fixed top-0 left-0 right-0 z-50 bg-slate-950/95 border-b border-purple-500/30 backdrop-blur-xl px-4 py-3 items-center justify-between">
+    <button onclick="openMobileSidebar()" class="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center hover:bg-purple-500/40 transition-all">
+      <i class="fas fa-bars text-purple-400"></i>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center">
+        <img src="logo.jpeg" alt="Gracelight Logo" class="w-full h-full object-cover">
+      </div>
+      <span class="font-bold text-sm bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Gracelight Admin</span>
+    </div>
+    <div id="mobile-unread" class="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center justify-center hidden">
+      <span id="mobile-unread-count" class="text-red-400 text-xs font-bold">0</span>
+    </div>
+    <div class="w-10 h-10"></div>
+  </div>
+
+  <!-- Sidebar -->
+  <div id="admin-sidebar" class="sidebar w-72 flex-shrink-0 flex flex-col overflow-y-auto">
+    <div class="p-6 flex-1">
+      <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center">
+            <img src="logo.jpeg" alt="Gracelight Logo" class="w-full h-full object-cover">
+          </div>
+          <div>
+            <span class="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Gracelight</span>
+            <span class="text-xs text-purple-400 block">Admin Panel</span>
+          </div>
+        </div>
+        <button onclick="closeMobileSidebar()" class="md:hidden w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center text-gray-400 hover:text-white transition-colors">
+          <i class="fas fa-times text-sm"></i>
+        </button>
+      </div>
+      <nav class="space-y-1">
+        <a href="#" data-section="dashboard" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 font-medium">
+          <i class="fas fa-home w-5 text-center"></i><span>Dashboard</span>
+        </a>
+        <a href="#" data-section="site-settings" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-cog w-5 text-center"></i><span>Site Settings</span>
+        </a>
+        <a href="#" data-section="messages" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-envelope w-5 text-center"></i><span>Messages</span>
+          <span id="unread-badge" class="ml-auto bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full hidden">0</span>
+        </a>
+        <a href="#" data-section="stats" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-chart-bar w-5 text-center"></i><span>Statistics</span>
+        </a>
+        <a href="#" data-section="services" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-bolt w-5 text-center"></i><span>Services</span>
+        </a>
+        <a href="#" data-section="team" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-users w-5 text-center"></i><span>Team Members</span>
+        </a>
+        <a href="#" data-section="testimonials" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-star w-5 text-center"></i><span>Testimonials</span>
+        </a>
+        <a href="#" data-section="projects" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-briefcase w-5 text-center"></i><span>Portfolio</span>
+        </a>
+        <a href="#" data-section="industries" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-building w-5 text-center"></i><span>Industries</span>
+        </a>
+        <a href="#" data-section="pricing" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-tag w-5 text-center"></i><span>Pricing Plans</span>
+        </a>
+        <a href="#" data-section="addons" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-plus-circle w-5 text-center"></i><span>Add-ons</span>
+        </a>
+        <a href="#" data-section="faqs" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-question-circle w-5 text-center"></i><span>FAQs</span>
+        </a>
+        <!-- NEW sections -->
+        <div class="pt-2 pb-1 px-4 text-xs text-purple-400/60 uppercase tracking-wider font-semibold">New Features</div>
+        <a href="#" data-section="blog" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-blog w-5 text-center"></i><span>Blog Posts</span>
+        </a>
+        <a href="#" data-section="newsletter" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-paper-plane w-5 text-center"></i><span>Newsletter</span>
+        </a>
+      </nav>
+    </div>
+    <!-- User info + logout -->
+    <div class="border-t border-purple-500/30 p-5">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-sm">
+          <i class="fas fa-user"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div id="admin-name" class="font-semibold text-sm truncate">Admin</div>
+          <div id="admin-email" class="text-xs text-gray-400 truncate"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="1f7e7b7276715f786d7e7c7a737678776b7c6d7a7e6b7670716c317c7072">[email&#160;protected]</a></div>
+        </div>
+      </div>
+      <button id="logout-btn" class="btn-secondary w-full py-2 rounded-lg flex items-center justify-center gap-2 text-sm">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex-1 overflow-y-auto bg-gradient-to-br from-slate-950 via-slate-900 to-purple-950/30 main-content">
+    <div class="p-4 md:p-8 pt-20 md:pt-8">
+
+      <!-- ---- DASHBOARD ---- -->
+      <section id="dashboard-section" class="section">
+        <h1 class="text-3xl font-bold mb-8">Dashboard Overview</h1>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          <div class="card p-5">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-11 h-11 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <i class="fas fa-envelope text-xl text-purple-400"></i>
+              </div>
+              <span class="text-xs text-gray-400">Total</span>
+            </div>
+            <div class="text-3xl font-bold" id="stat-total-messages">—</div>
+            <div class="text-xs text-gray-400 mt-1">Messages</div>
+          </div>
+          <div class="card p-5">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-11 h-11 rounded-xl bg-pink-500/20 flex items-center justify-center">
+                <i class="fas fa-clock text-xl text-pink-400"></i>
+              </div>
+              <span class="text-xs text-gray-400">Unread</span>
+            </div>
+            <div class="text-3xl font-bold" id="stat-unread-messages">—</div>
+            <div class="text-xs text-gray-400 mt-1">Pending</div>
+          </div>
+          <div class="card p-5">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-11 h-11 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <i class="fas fa-briefcase text-xl text-blue-400"></i>
+              </div>
+              <span class="text-xs text-gray-400">Active</span>
+            </div>
+            <div class="text-3xl font-bold" id="stat-projects">—</div>
+            <div class="text-xs text-gray-400 mt-1">Projects</div>
+          </div>
+          <div class="card p-5">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-11 h-11 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <i class="fas fa-paper-plane text-xl text-green-400"></i>
+              </div>
+              <span class="text-xs text-gray-400">Total</span>
+            </div>
+            <div class="text-3xl font-bold" id="stat-subscribers">—</div>
+            <div class="text-xs text-gray-400 mt-1">Subscribers</div>
+          </div>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="card p-6">
+            <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+              <i class="fas fa-envelope text-purple-400"></i> Recent Messages
+            </h2>
+            <div id="recent-messages-list" class="space-y-3">
+              <div class="skeleton h-12 w-full"></div>
+              <div class="skeleton h-12 w-full"></div>
+              <div class="skeleton h-12 w-full"></div>
+            </div>
+          </div>
+          <div class="card p-6">
+            <h2 class="text-lg font-bold mb-4">Quick Actions</h2>
+            <div class="grid grid-cols-2 gap-3">
+              <button onclick="App.switchSection('messages')" class="btn-secondary p-4 rounded-xl text-center">
+                <i class="fas fa-envelope text-xl mb-1 block text-purple-400"></i>
+                <span class="text-xs">Messages</span>
+              </button>
+              <button onclick="App.switchSection('site-settings')" class="btn-secondary p-4 rounded-xl text-center">
+                <i class="fas fa-cog text-xl mb-1 block text-purple-400"></i>
+                <span class="text-xs">Settings</span>
+              </button>
+              <button onclick="App.switchSection('projects')" class="btn-secondary p-4 rounded-xl text-center">
+                <i class="fas fa-plus text-xl mb-1 block text-purple-400"></i>
+                <span class="text-xs">Add Project</span>
+              </button>
+              <button onclick="App.switchSection('blog')" class="btn-secondary p-4 rounded-xl text-center">
+                <i class="fas fa-blog text-xl mb-1 block text-purple-400"></i>
+                <span class="text-xs">Blog Posts</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---- SITE SETTINGS ---- -->
+      <section id="site-settings-section" class="section hidden">
+        <h1 class="text-3xl font-bold mb-8">Site Settings</h1>
+        <div class="card p-8 max-w-2xl">
+          <form id="site-settings-form" class="space-y-5">
+            <div>
+              <label class="block text-sm font-medium mb-2">Hero Headline</label>
+              <input type="text" id="s-hero-headline" class="form-input w-full px-4 py-3" placeholder="Transform Your Digital...">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Hero Subheading</label>
+              <textarea id="s-hero-subheading" rows="3" class="form-input w-full px-4 py-3"></textarea>
+            </div>
+            <div class="grid md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">Contact Email</label>
+                <input type="email" id="s-contact-email" class="form-input w-full px-4 py-3">
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-2">Contact Phone</label>
+                <input type="tel" id="s-contact-phone" class="form-input w-full px-4 py-3">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">WhatsApp Number (no + or spaces)</label>
+              <input type="tel" id="s-whatsapp" class="form-input w-full px-4 py-3" placeholder="9779807007817">
+            </div>
+            <button type="submit" class="btn-primary px-8 py-3 rounded-xl font-bold flex items-center gap-2">
+              <i class="fas fa-save"></i> Save Settings
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- ---- MESSAGES ---- -->
+      <section id="messages-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Messages</h1>
+          <button onclick="DB.markAllRead()" class="btn-secondary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-check-double"></i> Mark All Read
+          </button>
+        </div>
+        <div class="card p-6">
+          <div id="messages-list" class="space-y-3">
+            <div class="skeleton h-20 w-full"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---- STATS ---- -->
+      <section id="stats-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Statistics</h1>
+          <button onclick="Modal.openStat()" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-plus"></i> Add Stat
+          </button>
+        </div>
+        <div class="card p-6"><div id="stats-list" class="space-y-3"></div></div>
+      </section>
+
+      <!-- ---- SERVICES ---- -->
+      <section id="services-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Services</h1>
+          <button onclick="Modal.openService()" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-plus"></i> Add Service
+          </button>
+        </div>
+        <div class="card p-6"><div id="services-list" class="space-y-3"></div></div>
+      </section>
+
+      <!-- ---- TEAM ---- -->
+      <section id="team-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Team Members</h1>
+          <button onclick="Modal.openTeam()" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-plus"></i> Add Member
+          </button>
+        </div>
+        <div class="card p-6"><div id="team-list" class="space-y-3"></div></div>
+      </section>
+
+      <!-- ---- TESTIMONIALS ---- -->
+      <section id="testimonials-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Testimonials</h1>
+          <button onclick="Modal.openTestimonial()" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-plus"></i> Add Testimonial
+          </button>
+        </div>
+        <div class="card p-6"><div id="testimonials-list" class="space-y-3"></div></div>
+      </section>
+
+      <!-- ---- PROJECTS ---- -->
+      <section id="projects-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Portfolio Projects</h1>
+          <button onclick="Modal.openProject()" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-plus"></i> Add Project
+          </button>
+        </div>
+        <div class="card p-6"><div id="projects-list" class="space-y-3"></div></div>
+      </section>
+
+      <!-- ---- INDUSTRIES ---- -->
+      <section id="industries-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Industries</h1>
+          <button onclick="Modal.openIndustry()" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-plus"></i> Add Industry
+          </button>
+        </div>
+        <div class="card p-6"><div id="industries-list" class="space-y-3"></div></div>
+      </section>
+
+      <!-- ---- PRICING ---- -->
+      <section id="pricing-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Pricing Plans</h1>
+          <button onclick="Modal.openPricing()" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-plus"></i> Add Plan
+          </button>
+        </div>
+        <div class="card p-6"><div id="pricing-list" class="space-y-3"></div></div>
+      </section>
+
+      <!-- ---- ADD-ONS ---- -->
+      <section id="addons-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Add-ons</h1>
+          <button onclick="Modal.openAddon()" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-plus"></i> Add Add-on
+          </button>
+        </div>
+        <div class="card p-6"><div id="addons-list" class="space-y-3"></div></div>
+      </section>
+
+      <!-- ---- FAQS ---- -->
+      <section id="faqs-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">FAQs</h1>
+          <button onclick="Modal.openFaq()" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-plus"></i> Add FAQ
+          </button>
+        </div>
+        <div class="card p-6"><div id="faqs-list" class="space-y-3"></div></div>
+      </section>
+
+      <!-- ---- NEW: BLOG ---- -->
+      <section id="blog-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Blog Posts</h1>
+          <button onclick="Modal.openBlog()" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-plus"></i> New Post
+          </button>
+        </div>
+        <div class="card p-6"><div id="blog-list" class="space-y-3"><div class="skeleton h-16 w-full"></div></div></div>
+      </section>
+
+      <!-- ---- NEW: NEWSLETTER ---- -->
+      <section id="newsletter-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Newsletter Subscribers</h1>
+          <button onclick="DB.exportSubscribers()" class="btn-secondary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fas fa-download"></i> Export CSV
+          </button>
+        </div>
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          <div class="card p-5 text-center">
+            <div class="text-3xl font-bold text-purple-400" id="sub-total">—</div>
+            <div class="text-xs text-gray-400 mt-1">Total Subscribers</div>
+          </div>
+          <div class="card p-5 text-center">
+            <div class="text-3xl font-bold text-green-400" id="sub-active">—</div>
+            <div class="text-xs text-gray-400 mt-1">Active</div>
+          </div>
+          <div class="card p-5 text-center">
+            <div class="text-3xl font-bold text-pink-400" id="sub-this-month">—</div>
+            <div class="text-xs text-gray-400 mt-1">This Month</div>
+          </div>
+        </div>
+        <div class="card p-6"><div id="newsletter-list" class="space-y-3"><div class="skeleton h-12 w-full"></div></div></div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL CONTAINER ==================== -->
+<div id="modal-root"></div>
+
+<!-- ==================== SCRIPTS ==================== -->
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ============================================================
+// CONFIG
+// ============================================================
+const SUPABASE_URL  = 'https://coyyouxyoqeqtmvcjlng.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNveXlvdXh5b3FlcXRtdmNqbG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNjQ5MDYsImV4cCI6MjA4Nzk0MDkwNn0.IxvPhqWjIjycZVhvsV0xTiplBZ0CCxr-8o34izzZXSQ';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ============================================================
+// TOAST UTILITY
+// ============================================================
+const Toast = {
+  show(msg, type = 'success') {
+    const el  = document.getElementById('toast');
+    const ico = document.getElementById('toast-icon');
+    const txt = document.getElementById('toast-message');
+    ico.textContent = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+    txt.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(Toast._timer);
+    Toast._timer = setTimeout(() => el.classList.remove('show'), 3200);
+  }
+};
+
+// ============================================================
+// IN-MEMORY CACHE
+// ============================================================
+const Cache = {
+  messages: [], stats: [], services: [], team: [],
+  testimonials: [], projects: [], industries: [],
+  pricing: [], addons: [], faqs: [], settings: null,
+  blogPosts: [], subscribers: []
+};
+
+// ============================================================
+// AUTH MODULE
+// ============================================================
+const Auth = {
+  user: null,
+
+  async init() {
+    const saved = sessionStorage.getItem('gl_admin');
+    if (saved) {
+      Auth.user = JSON.parse(saved);
+      App.showDashboard();
+    } else {
+      App.showLogin();
+    }
+  },
+
+  async login(email, password) {
+    const { data, error } = await sb
+      .from('admin_users')
+      .select('id, name, email')
+      .eq('email', email)
+      .eq('password_hash', password)
+      .single();
+
+    if (error || !data) throw new Error('Invalid email or password');
+    Auth.user = data;
+    sessionStorage.setItem('gl_admin', JSON.stringify(data));
+    return data;
+  },
+
+  logout() {
+    Auth.user = null;
+    sessionStorage.removeItem('gl_admin');
+    App.showLogin();
+  }
+};
+
+// ============================================================
+// NEW: IMAGE UPLOAD HELPER
+// ============================================================
+async function uploadImage(file, bucket, folder) {
+  const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, '');
+  const fileName = `${folder}/${Date.now()}_${safeName}`;
+  const { data, error } = await sb.storage.from(bucket).upload(fileName, file);
+  if (error) throw error;
+  const { data: { publicUrl } } = sb.storage.from(bucket).getPublicUrl(fileName);
+  return publicUrl;
+}
+
+// ============================================================
+// DATABASE MODULE
+// ============================================================
+const DB = {
+  async getAll(table, orderCol = 'display_order') {
+    const { data, error } = await sb.from(table).select('*').order(orderCol);
+    if (error) throw error;
+    return data || [];
+  },
+
+  async insert(table, payload) {
+    const { data, error } = await sb.from(table).insert([payload]).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async update(table, id, payload) {
+    const { data, error } = await sb.from(table).update(payload).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async remove(table, id) {
+    const { error } = await sb.from(table).delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async toggle(table, id, field, current) {
+    return DB.update(table, id, { [field]: !current });
+  },
+
+  async loadAll() {
+    const [messages, stats, services, team, testimonials,
+           projects, industries, pricing, addons, faqs] = await Promise.all([
+      sb.from('messages').select('*').order('created_at', { ascending: false }),
+      sb.from('stats').select('*').order('display_order'),
+      sb.from('services').select('*').order('display_order'),
+      sb.from('team_members').select('*').order('display_order'),
+      sb.from('testimonials').select('*').order('display_order'),
+      sb.from('projects').select('*').order('display_order'),
+      sb.from('industries').select('*').order('display_order'),
+      sb.from('pricing_plans').select('*').order('display_order'),
+      sb.from('addons').select('*').order('display_order'),
+      sb.from('faqs').select('*').order('display_order'),
+    ]);
+
+    Cache.messages     = messages.data     || [];
+    Cache.stats        = stats.data        || [];
+    Cache.services     = services.data     || [];
+    Cache.team         = team.data         || [];
+    Cache.testimonials = testimonials.data || [];
+    Cache.projects     = projects.data     || [];
+    Cache.industries   = industries.data   || [];
+    Cache.pricing      = pricing.data      || [];
+    Cache.addons       = addons.data       || [];
+    Cache.faqs         = faqs.data         || [];
+
+    const { data: settings } = await sb.from('site_settings').select('*').eq('id', 1).single();
+    Cache.settings = settings;
+
+    // NEW: Load blog posts and subscribers (graceful failure if tables don't exist)
+    try {
+      const { data: bp } = await sb.from('blog_posts').select('*').order('published_at', { ascending: false });
+      Cache.blogPosts = bp || [];
+    } catch { Cache.blogPosts = []; }
+
+    try {
+      const { data: subs } = await sb.from('newsletter_subscribers').select('*').order('subscribed_at', { ascending: false });
+      Cache.subscribers = subs || [];
+    } catch { Cache.subscribers = []; }
+
+    Render.all();
+  },
+
+  async markAllRead() {
+    const { error } = await sb.from('messages').update({ status: 'read' }).eq('status', 'unread');
+    if (error) { Toast.show('Error updating messages', 'error'); return; }
+    Toast.show('All messages marked as read');
+    await DB.loadAll();
+  },
+
+  async markRead(id) {
+    await DB.update('messages', id, { status: 'read' });
+    Toast.show('Marked as read');
+    await DB.loadAll();
+  },
+
+  async deleteMsg(id) {
+    if (!confirm('Delete this message?')) return;
+    await DB.remove('messages', id);
+    Toast.show('Message deleted');
+    await DB.loadAll();
+  },
+
+  async saveSettings(data) {
+    const { error } = await sb.from('site_settings').update(data).eq('id', 1);
+    if (error) throw error;
+  },
+
+  exportSubscribers() {
+    if (!Cache.subscribers.length) { Toast.show('No subscribers to export', 'error'); return; }
+    const rows = [['Email', 'Name', 'Source', 'Subscribed At', 'Active']];
+    Cache.subscribers.forEach(s => rows.push([s.email, s.name || '', s.source || '', s.subscribed_at, s.active]));
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = `subscribers_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    Toast.show('Subscribers exported!');
+  }
+};
+
+// ============================================================
+// RENDER MODULE
+// ============================================================
+const Render = {
+  all() {
+    Render.dashboard();
+    Render.messages();
+    Render.stats();
+    Render.services();
+    Render.team();
+    Render.testimonials();
+    Render.projects();
+    Render.industries();
+    Render.pricing();
+    Render.addons();
+    Render.faqs();
+    Render.settings();
+    Render.blog();
+    Render.newsletter();
+  },
+
+  actions(table, id, active, editFn) {
+    return `
+      <div class="flex gap-2 flex-shrink-0">
+        <button onclick="${editFn}('${id}')" title="Edit"
+          class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 flex items-center justify-center transition-all">
+          <i class="fas fa-edit text-xs"></i>
+        </button>
+        <button onclick="DB.toggle('${table}', '${id}', 'active', ${active}).then(() => { Toast.show('Updated'); DB.loadAll(); })"
+          title="${active ? 'Deactivate' : 'Activate'}"
+          class="w-8 h-8 rounded-lg ${active ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/40' : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/40'} flex items-center justify-center transition-all">
+          <i class="fas ${active ? 'fa-eye' : 'fa-eye-slash'} text-xs"></i>
+        </button>
+        <button onclick="confirmDelete('${table}', '${id}')" title="Delete"
+          class="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 flex items-center justify-center transition-all">
+          <i class="fas fa-trash text-xs"></i>
+        </button>
+      </div>`;
+  },
+
+  emptyState(msg) {
+    return `<div class="text-center py-12 text-gray-500"><i class="fas fa-inbox text-4xl mb-3 block opacity-30"></i>${msg}</div>`;
+  },
+
+  dashboard() {
+    const unread = Cache.messages.filter(m => m.status === 'unread').length;
+    setText('stat-total-messages', Cache.messages.length);
+    setText('stat-unread-messages', unread);
+    setText('stat-projects', Cache.projects.filter(p => p.active).length);
+    setText('stat-subscribers', Cache.subscribers.filter(s => s.active).length);
+
+    const badge = document.getElementById('unread-badge');
+    if (unread > 0) { badge.textContent = unread; badge.classList.remove('hidden'); }
+    else badge.classList.add('hidden');
+
+    const recent = Cache.messages.slice(0, 5);
+    document.getElementById('recent-messages-list').innerHTML = recent.length
+      ? recent.map(m => `
+          <div class="flex items-center justify-between p-3 rounded-lg ${m.status === 'unread' ? 'bg-purple-500/10' : 'bg-slate-800/30'}">
+            <div class="min-w-0">
+              <div class="font-semibold text-sm truncate">${esc(m.name)}</div>
+              <div class="text-xs text-gray-400 truncate">${esc(String(m.message).substring(0, 60))}…</div>
+            </div>
+            <span class="ml-3 text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${m.status === 'unread' ? 'badge-unread' : 'badge-read'}">${m.status}</span>
+          </div>`).join('')
+      : '<p class="text-gray-500 text-sm text-center py-4">No messages yet</p>';
+  },
+
+  messages() {
+    const el = document.getElementById('messages-list');
+    if (!Cache.messages.length) { el.innerHTML = Render.emptyState('No messages yet'); return; }
+    el.innerHTML = Cache.messages.map(m => `
+      <div class="table-row p-4 rounded-lg ${m.status === 'unread' ? 'bg-purple-500/5' : ''}">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+              <span class="font-semibold">${esc(m.name)}</span>
+              <span class="text-sm text-gray-400">${esc(m.email)}</span>
+              ${m.phone ? `<span class="text-sm text-gray-400">${esc(m.phone)}</span>` : ''}
+              <span class="text-xs px-2 py-0.5 rounded-full ${m.status === 'unread' ? 'badge-unread' : 'badge-read'}">${m.status}</span>
+            </div>
+            <p class="text-gray-300 text-sm mb-1">${esc(m.message)}</p>
+            <div class="text-xs text-gray-500">Service: ${esc(m.service || 'Not specified')} · ${new Date(m.created_at).toLocaleString()}</div>
+          </div>
+          <div class="flex gap-2 flex-shrink-0">
+            ${m.status === 'unread' ? `
+              <button onclick="DB.markRead('${m.id}')" title="Mark read"
+                class="w-8 h-8 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/40 flex items-center justify-center transition-all">
+                <i class="fas fa-check text-xs"></i>
+              </button>` : ''}
+            <button onclick="DB.deleteMsg('${m.id}')" title="Delete"
+              class="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 flex items-center justify-center transition-all">
+              <i class="fas fa-trash text-xs"></i>
+            </button>
+          </div>
+        </div>
+      </div>`).join('');
+  },
+
+  stats() {
+    const el = document.getElementById('stats-list');
+    if (!Cache.stats.length) { el.innerHTML = Render.emptyState('No stats yet'); return; }
+    el.innerHTML = Cache.stats.map(s => `
+      <div class="table-row p-4 rounded-lg flex items-center justify-between gap-4">
+        <div class="flex items-center gap-4 flex-1 min-w-0">
+          <span class="font-semibold truncate">${esc(s.label)}</span>
+          <span class="text-purple-400 font-bold">${s.value}${esc(s.suffix)}</span>
+          ${!s.active ? '<span class="text-xs bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full">Hidden</span>' : ''}
+        </div>
+        ${Render.actions('stats', s.id, s.active, 'Modal.editStat')}
+      </div>`).join('');
+  },
+
+  services() {
+    const el = document.getElementById('services-list');
+    if (!Cache.services.length) { el.innerHTML = Render.emptyState('No services yet'); return; }
+    el.innerHTML = Cache.services.map(s => `
+      <div class="table-row p-4 rounded-lg flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="text-2xl">${s.icon}</span>
+          <div class="min-w-0">
+            <div class="font-semibold truncate">${esc(s.title)}</div>
+            <div class="text-xs text-gray-400">${(s.features||[]).length} features</div>
+          </div>
+          ${s.is_popular ? '<span class="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full flex-shrink-0">Popular</span>' : ''}
+          ${!s.active ? '<span class="text-xs bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Hidden</span>' : ''}
+        </div>
+        ${Render.actions('services', s.id, s.active, 'Modal.editService')}
+      </div>`).join('');
+  },
+
+  // ENHANCED: Team with avatar preview
+  team() {
+    const el = document.getElementById('team-list');
+    if (!Cache.team.length) { el.innerHTML = Render.emptyState('No team members yet'); return; }
+    el.innerHTML = Cache.team.map(m => {
+      let avatar = '';
+      if (m.avatar_style === 'image' && m.avatar_url) {
+        avatar = `<img src="${esc(m.avatar_url)}" class="w-9 h-9 rounded-full object-cover flex-shrink-0">`;
+      } else if (m.avatar_style === 'emoji' && m.custom_emoji) {
+        avatar = `<div class="w-9 h-9 rounded-full bg-gradient-to-br ${m.color_gradient || 'from-purple-500 to-pink-500'} flex items-center justify-center text-lg flex-shrink-0">${m.custom_emoji}</div>`;
+      } else {
+        avatar = `<div class="w-9 h-9 rounded-full bg-gradient-to-br ${m.color_gradient || 'from-purple-500 to-pink-500'} flex items-center justify-center font-bold text-sm flex-shrink-0">${esc(m.initials || 'X')}</div>`;
+      }
+      return `
+        <div class="table-row p-4 rounded-lg flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            ${avatar}
+            <div class="min-w-0">
+              <div class="font-semibold truncate">${esc(m.name)}</div>
+              <div class="text-xs text-gray-400">${esc(m.role)}</div>
+            </div>
+            ${!m.active ? '<span class="text-xs bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Hidden</span>' : ''}
+          </div>
+          ${Render.actions('team_members', m.id, m.active, 'Modal.editTeam')}
+        </div>`;
+    }).join('');
+  },
+
+  // ENHANCED: Testimonials with avatar preview
+  testimonials() {
+    const el = document.getElementById('testimonials-list');
+    if (!Cache.testimonials.length) { el.innerHTML = Render.emptyState('No testimonials yet'); return; }
+    el.innerHTML = Cache.testimonials.map(t => {
+      let avatar = '';
+      if (t.avatar_style === 'image' && t.avatar_url) {
+        avatar = `<img src="${esc(t.avatar_url)}" class="w-9 h-9 rounded-full object-cover flex-shrink-0">`;
+      } else {
+        const display = t.avatar_style === 'emoji' && t.custom_emoji ? t.custom_emoji : esc(t.initials || 'X');
+        avatar = `<div class="w-9 h-9 rounded-full bg-gradient-to-br ${t.color_gradient || 'from-purple-500 to-pink-500'} flex items-center justify-center font-bold text-sm flex-shrink-0">${display}</div>`;
+      }
+      return `
+        <div class="table-row p-4 rounded-lg flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            ${avatar}
+            <div class="min-w-0">
+              <div class="font-semibold truncate">${esc(t.client_name)}</div>
+              <div class="text-xs text-gray-400">${esc(t.client_company)}</div>
+            </div>
+            <span class="text-yellow-400 text-sm flex-shrink-0">${'★'.repeat(t.rating)}</span>
+            ${!t.active ? '<span class="text-xs bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Hidden</span>' : ''}
+          </div>
+          ${Render.actions('testimonials', t.id, t.active, 'Modal.editTestimonial')}
+        </div>`;
+    }).join('');
+  },
+
+  projects() {
+    const el = document.getElementById('projects-list');
+    if (!Cache.projects.length) { el.innerHTML = Render.emptyState('No projects yet'); return; }
+    el.innerHTML = Cache.projects.map(p => `
+      <div class="table-row p-4 rounded-lg flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          ${p.main_image
+            ? `<img src="${esc(p.main_image)}" class="w-9 h-9 rounded-lg object-cover flex-shrink-0">`
+            : `<span class="text-2xl">${p.icon}</span>`}
+          <div class="min-w-0">
+            <div class="font-semibold truncate">${esc(p.title)}</div>
+            <div class="text-xs text-gray-400 capitalize">${esc(p.category)}</div>
+          </div>
+          ${p.featured ? '<span class="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full flex-shrink-0">Featured</span>' : ''}
+          ${!p.active ? '<span class="text-xs bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Hidden</span>' : ''}
+        </div>
+        ${Render.actions('projects', p.id, p.active, 'Modal.editProject')}
+      </div>`).join('');
+  },
+
+  industries() {
+    const el = document.getElementById('industries-list');
+    if (!Cache.industries.length) { el.innerHTML = Render.emptyState('No industries yet'); return; }
+    el.innerHTML = Cache.industries.map(i => `
+      <div class="table-row p-4 rounded-lg flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="text-2xl">${i.icon}</span>
+          <span class="font-semibold truncate">${esc(i.name)}</span>
+          ${!i.active ? '<span class="text-xs bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Hidden</span>' : ''}
+        </div>
+        ${Render.actions('industries', i.id, i.active, 'Modal.editIndustry')}
+      </div>`).join('');
+  },
+
+  pricing() {
+    const el = document.getElementById('pricing-list');
+    if (!Cache.pricing.length) { el.innerHTML = Render.emptyState('No pricing plans yet'); return; }
+    el.innerHTML = Cache.pricing.map(p => `
+      <div class="table-row p-4 rounded-lg flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="font-semibold">${esc(p.name)}</span>
+          <span class="text-purple-400">${p.currency} ${p.price.toLocaleString()}</span>
+          <span class="text-xs text-gray-400">/${p.interval}</span>
+          ${p.is_popular ? '<span class="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full">Popular</span>' : ''}
+          ${!p.active ? '<span class="text-xs bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full">Hidden</span>' : ''}
+        </div>
+        ${Render.actions('pricing_plans', p.id, p.active, 'Modal.editPricing')}
+      </div>`).join('');
+  },
+
+  addons() {
+    const el = document.getElementById('addons-list');
+    if (!Cache.addons.length) { el.innerHTML = Render.emptyState('No add-ons yet'); return; }
+    el.innerHTML = Cache.addons.map(a => `
+      <div class="table-row p-4 rounded-lg flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <span class="text-2xl">${a.icon}</span>
+          <span class="font-semibold truncate">${esc(a.name)}</span>
+          <span class="text-purple-400">Rs ${a.price.toLocaleString()}</span>
+          <span class="text-xs text-gray-400">${esc(a.price_text || '')}</span>
+          ${!a.active ? '<span class="text-xs bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Hidden</span>' : ''}
+        </div>
+        ${Render.actions('addons', a.id, a.active, 'Modal.editAddon')}
+      </div>`).join('');
+  },
+
+  faqs() {
+    const el = document.getElementById('faqs-list');
+    if (!Cache.faqs.length) { el.innerHTML = Render.emptyState('No FAQs yet'); return; }
+    el.innerHTML = Cache.faqs.map(f => `
+      <div class="table-row p-4 rounded-lg flex items-center justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold truncate">${esc(f.question)}</div>
+          <div class="text-xs text-gray-400 capitalize">${f.category}</div>
+        </div>
+        ${Render.actions('faqs', f.id, f.active, 'Modal.editFaq')}
+      </div>`).join('');
+  },
+
+  settings() {
+    if (!Cache.settings) return;
+    const s = Cache.settings;
+    setVal('s-hero-headline', s.hero_headline || '');
+    setVal('s-hero-subheading', s.hero_subheading || '');
+    setVal('s-contact-email', s.contact_email || '');
+    setVal('s-contact-phone', s.contact_phone || '');
+    setVal('s-whatsapp', s.whatsapp_number || '');
+  },
+
+  // NEW: Blog posts list
+  blog() {
+    const el = document.getElementById('blog-list');
+    if (!el) return;
+    if (!Cache.blogPosts.length) { el.innerHTML = Render.emptyState('No blog posts yet'); return; }
+    el.innerHTML = Cache.blogPosts.map(p => `
+      <div class="table-row p-4 rounded-lg flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          ${p.featured_image
+            ? `<img src="${esc(p.featured_image)}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0">`
+            : `<div class="w-12 h-12 rounded-lg bg-purple-900/50 flex items-center justify-center text-2xl flex-shrink-0">📝</div>`
+          }
+          <div class="min-w-0">
+            <div class="font-semibold truncate">${esc(p.title)}</div>
+            <div class="text-xs text-gray-400">${p.author || 'Unknown'} · ${new Date(p.published_at).toLocaleDateString()} · ${p.views || 0} views</div>
+          </div>
+          ${p.category ? `<span class="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full flex-shrink-0 capitalize">${esc(p.category)}</span>` : ''}
+          ${!p.active ? '<span class="text-xs bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Draft</span>' : ''}
+        </div>
+        ${Render.actions('blog_posts', p.id, p.active, 'Modal.editBlog')}
+      </div>`).join('');
+  },
+
+  // NEW: Newsletter subscribers list
+  newsletter() {
+    const el = document.getElementById('newsletter-list');
+    if (!el) return;
+
+    const active = Cache.subscribers.filter(s => s.active);
+    const thisMonth = Cache.subscribers.filter(s => {
+      const d = new Date(s.subscribed_at);
+      const now = new Date();
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    setText('sub-total', Cache.subscribers.length);
+    setText('sub-active', active.length);
+    setText('sub-this-month', thisMonth.length);
+
+    if (!Cache.subscribers.length) { el.innerHTML = Render.emptyState('No subscribers yet'); return; }
+    el.innerHTML = Cache.subscribers.map(s => `
+      <div class="table-row p-4 rounded-lg flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-sm font-bold flex-shrink-0">
+            ${s.email ? s.email.charAt(0).toUpperCase() : '?'}
+          </div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate">${esc(s.email)}</div>
+            <div class="text-xs text-gray-400">${s.name || '—'} · ${esc(s.source || 'website')} · ${new Date(s.subscribed_at).toLocaleDateString()}</div>
+          </div>
+          ${s.active ? '<span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full flex-shrink-0">Active</span>' : '<span class="text-xs bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Inactive</span>'}
+        </div>
+        <div class="flex gap-2 flex-shrink-0">
+          <button onclick="confirmDelete('newsletter_subscribers', '${s.id}')" title="Delete"
+            class="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 flex items-center justify-center transition-all">
+            <i class="fas fa-trash text-xs"></i>
+          </button>
+        </div>
+      </div>`).join('');
+  }
+};
+
+// ============================================================
+// MODAL MODULE
+// ============================================================
+const Modal = {
+  gradients: [
+    'from-purple-500 to-pink-500',
+    'from-blue-500 to-cyan-500',
+    'from-green-500 to-emerald-500',
+    'from-orange-500 to-red-500',
+    'from-yellow-500 to-amber-500'
+  ],
+
+  render(id, title, formHtml, onSubmit) {
+    document.getElementById('modal-root').innerHTML = `
+      <div id="${id}" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="modal-box max-w-2xl w-full rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold">${title}</h2>
+            <button type="button" onclick="Modal.close('${id}')" class="w-8 h-8 rounded-lg bg-gray-500/20 hover:bg-gray-500/40 flex items-center justify-center transition-all">
+              <i class="fas fa-times text-sm"></i>
+            </button>
+          </div>
+          <form id="modal-form" class="space-y-4">
+            ${formHtml}
+            <div class="flex gap-3 pt-2">
+              <button type="submit" class="btn-primary flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+                <i class="fas fa-save"></i> Save
+              </button>
+              <button type="button" onclick="Modal.close('${id}')" class="btn-secondary flex-1 py-3 rounded-xl">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+    document.getElementById('modal-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('[type=submit]');
+      btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+      try {
+        await onSubmit();
+        Modal.close(id);
+        await DB.loadAll();
+      } catch (err) {
+        Toast.show(err.message || 'Error saving', 'error');
+      } finally {
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save';
+      }
+    });
+  },
+
+  close(id) { document.getElementById(id)?.remove(); },
+
+  field(label, inputHtml) {
+    return `<div><label class="block text-sm font-medium mb-2 text-gray-300">${label}</label>${inputHtml}</div>`;
+  },
+
+  input(id, value = '', type = 'text', placeholder = '') {
+    return `<input type="${type}" id="${id}" value="${esc(value)}" placeholder="${placeholder}" class="form-input w-full px-4 py-3">`;
+  },
+
+  textarea(id, value = '', rows = 3) {
+    return `<textarea id="${id}" rows="${rows}" class="form-input w-full px-4 py-3">${esc(value)}</textarea>`;
+  },
+
+  select(id, options, selected = '') {
+    const opts = options.map(([v, l]) => `<option value="${v}" ${v === selected ? 'selected' : ''}>${l}</option>`).join('');
+    return `<select id="${id}" class="form-input w-full px-4 py-3">${opts}</select>`;
+  },
+
+  checkbox(id, checked, label) {
+    return `<div class="flex items-center gap-3"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''} class="w-4 h-4 accent-purple-500"><label for="${id}" class="text-sm font-medium">${label}</label></div>`;
+  },
+
+  gradientSelect(id, selected = '') {
+    const opts = Modal.gradients.map(g => `<option value="${g}" ${g === selected ? 'selected' : ''}>${g}</option>`).join('');
+    return `<select id="${id}" class="form-input w-full px-4 py-3">${opts}</select>`;
+  },
+
+  // ---- Shared avatar picker HTML builder ----
+  avatarPicker(prefix, data) {
+    const style = data?.avatar_style || 'gradient';
+    return `
+      <div class="mb-2">
+        <label class="block text-sm font-medium mb-3 text-gray-300">Avatar Style</label>
+        <div class="grid grid-cols-3 gap-3">
+          ${[['gradient','Gradient','<div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mx-auto mb-1"></div>'],
+             ['image','Upload','<i class="fas fa-upload text-purple-400 text-xl block text-center mb-1"></i>'],
+             ['emoji','Emoji','<div class="text-2xl text-center mb-1">${data?.custom_emoji || "👤"}</div>']].map(([v, l, ico]) => `
+            <label class="cursor-pointer">
+              <input type="radio" name="${prefix}-avatar-style" value="${v}" ${style === v ? 'checked' : ''} class="hidden ${prefix}-avatar-radio">
+              <div class="p-3 rounded-xl border-2 ${style === v ? 'border-purple-500 bg-purple-500/20' : 'border-purple-500/30'} hover:border-purple-500/60 transition-all text-center text-sm">
+                ${ico}${l}
+              </div>
+            </label>`).join('')}
+        </div>
+      </div>
+
+      <div id="${prefix}-gradient-field" class="${style !== 'gradient' ? 'hidden' : ''} space-y-3">
+        ${Modal.field('Gradient', Modal.gradientSelect(`${prefix}-gradient`, data?.color_gradient))}
+        ${Modal.field('Initials (2 chars)', Modal.input(`${prefix}-initials`, data?.initials || '', 'text', 'JD'))}
+      </div>
+
+      <div id="${prefix}-image-field" class="${style !== 'image' ? 'hidden' : ''} space-y-3">
+        <div>
+          <label class="block text-sm font-medium mb-2 text-gray-300">Upload Image</label>
+          <div class="border-2 border-dashed border-purple-500/30 rounded-xl p-5 text-center hover:border-purple-500/60 transition-all cursor-pointer" id="${prefix}-upload-area">
+            <input type="file" id="${prefix}-avatar-file" accept="image/*" class="hidden">
+            <i class="fas fa-cloud-upload-alt text-3xl text-purple-400 mb-2"></i>
+            <p class="text-sm text-gray-400">Click to upload avatar</p>
+            <p class="text-xs text-gray-500">Max 2MB (PNG, JPG, GIF)</p>
+          </div>
+          <div id="${prefix}-avatar-preview" class="mt-3 text-center ${data?.avatar_url ? '' : 'hidden'}">
+            <img src="${data?.avatar_url || ''}" class="w-16 h-16 rounded-full mx-auto object-cover border-2 border-purple-500/50">
+          </div>
+          <input type="hidden" id="${prefix}-avatar-url" value="${data?.avatar_url || ''}">
+        </div>
+      </div>
+
+      <div id="${prefix}-emoji-field" class="${style !== 'emoji' ? 'hidden' : ''} space-y-3">
+        ${Modal.field('Choose Emoji', `
+          <div class="grid grid-cols-8 gap-1.5 p-3 bg-slate-900 rounded-xl">
+            ${['👤','👨','👩','🧑','👑','🎨','💻','📸','🎬','✍️','🎤','👋','🌟','⭐','✨','💫'].map(e => `
+              <div class="${prefix}-emoji-opt w-9 h-9 rounded-lg bg-purple-900/30 hover:bg-purple-500/50 flex items-center justify-center text-xl cursor-pointer transition-all ${(data?.custom_emoji === e) ? 'ring-2 ring-purple-500 bg-purple-500/30' : ''}" data-emoji="${e}">${e}</div>
+            `).join('')}
+          </div>
+          <input type="hidden" id="${prefix}-custom-emoji" value="${data?.custom_emoji || '👤'}">
+        `)}
+      </div>`;
+  },
+
+  // Attach avatar picker events after modal render
+  attachAvatarEvents(prefix, bucket, folder) {
+    setTimeout(() => {
+      // Style toggle
+      document.querySelectorAll(`.${prefix}-avatar-radio`).forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          document.getElementById(`${prefix}-gradient-field`).classList.toggle('hidden', e.target.value !== 'gradient');
+          document.getElementById(`${prefix}-image-field`).classList.toggle('hidden', e.target.value !== 'image');
+          document.getElementById(`${prefix}-emoji-field`).classList.toggle('hidden', e.target.value !== 'emoji');
+        });
+      });
+
+      // Emoji select
+      document.querySelectorAll(`.${prefix}-emoji-opt`).forEach(el => {
+        el.addEventListener('click', () => {
+          document.querySelectorAll(`.${prefix}-emoji-opt`).forEach(e => e.classList.remove('ring-2','ring-purple-500','bg-purple-500/30'));
+          el.classList.add('ring-2','ring-purple-500','bg-purple-500/30');
+          document.getElementById(`${prefix}-custom-emoji`).value = el.dataset.emoji;
+        });
+      });
+
+      // Image upload
+      const uploadArea = document.getElementById(`${prefix}-upload-area`);
+      const fileInput = document.getElementById(`${prefix}-avatar-file`);
+      if (uploadArea && fileInput) {
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          if (file.size > 2 * 1024 * 1024) { Toast.show('File too large (max 2MB)', 'error'); return; }
+
+          uploadArea.innerHTML = '<i class="fas fa-spinner fa-spin text-3xl text-purple-400"></i><p class="text-sm mt-2">Uploading…</p>';
+          try {
+            const url = await uploadImage(file, bucket, folder);
+            document.getElementById(`${prefix}-avatar-url`).value = url;
+            const preview = document.getElementById(`${prefix}-avatar-preview`);
+            preview.innerHTML = `<img src="${url}" class="w-16 h-16 rounded-full mx-auto object-cover border-2 border-purple-500/50">`;
+            preview.classList.remove('hidden');
+            uploadArea.innerHTML = '<i class="fas fa-check text-3xl text-green-400"></i><p class="text-sm mt-2 text-gray-400">Uploaded! Click to change.</p>';
+            Toast.show('Avatar uploaded!');
+          } catch (err) {
+            Toast.show('Upload failed: ' + err.message, 'error');
+            uploadArea.innerHTML = '<i class="fas fa-cloud-upload-alt text-3xl text-purple-400"></i><p class="text-sm mt-2 text-gray-400">Click to upload</p>';
+          }
+        });
+      }
+    }, 100);
+  },
+
+  getAvatarPayload(prefix) {
+    const style = document.querySelector(`input[name="${prefix}-avatar-style"]:checked`)?.value || 'gradient';
+    if (style === 'gradient') {
+      return {
+        avatar_style: 'gradient',
+        color_gradient: val(`${prefix}-gradient`),
+        initials: val(`${prefix}-initials`).toUpperCase().slice(0, 2),
+        avatar_url: null, custom_emoji: null
+      };
+    } else if (style === 'image') {
+      const url = val(`${prefix}-avatar-url`);
+      return { avatar_style: 'image', avatar_url: url || null, initials: null, custom_emoji: null };
+    } else {
+      return {
+        avatar_style: 'emoji',
+        custom_emoji: val(`${prefix}-custom-emoji`) || '👤',
+        color_gradient: 'from-purple-500 to-pink-500',
+        avatar_url: null, initials: null
+      };
+    }
+  },
+
+  // ---- Stat ----
+  openStat(id) {
+    const data = id ? Cache.stats.find(s => String(s.id) === String(id)) : null;
+    const title = data ? 'Edit Stat' : 'Add Stat';
+    Modal.render('stat-modal', title, `
+      <input type="hidden" id="m-id" value="${data?.id || ''}">
+      ${Modal.field('Label', Modal.input('m-label', data?.label))}
+      ${Modal.field('Value', Modal.input('m-value', data?.value, 'number'))}
+      ${Modal.field('Suffix (+ % ★ etc.)', Modal.input('m-suffix', data?.suffix || '+'))}
+      ${Modal.field('Display Order', Modal.input('m-order', data?.display_order ?? (Cache.stats.length + 1), 'number'))}
+    `, async () => {
+      const payload = {
+        label: val('m-label'), value: +val('m-value'),
+        suffix: val('m-suffix'), display_order: +val('m-order'), active: true
+      };
+      if (!payload.label) throw new Error('Label is required');
+      const mid = val('m-id');
+      if (mid) await DB.update('stats', mid, payload);
+      else await DB.insert('stats', payload);
+      Toast.show(`Stat ${mid ? 'updated' : 'added'} ✓`);
+    });
+  },
+  editStat(id) { Modal.openStat(id); },
+
+  // ---- Service ----
+  openService(id) {
+    const data = id ? Cache.services.find(s => String(s.id) === String(id)) : null;
+    const title = data ? 'Edit Service' : 'Add Service';
+    Modal.render('service-modal', title, `
+      <input type="hidden" id="m-id" value="${data?.id || ''}">
+      ${Modal.field('Title', Modal.input('m-title', data?.title))}
+      ${Modal.field('Description', Modal.textarea('m-desc', data?.description))}
+      ${Modal.field('Icon (emoji)', Modal.input('m-icon', data?.icon || '🎨'))}
+      ${Modal.field('Features (one per line)', Modal.textarea('m-features', (data?.features || []).join('\n'), 5))}
+      ${Modal.checkbox('m-popular', data?.is_popular, 'Mark as Popular')}
+      ${Modal.field('Display Order', Modal.input('m-order', data?.display_order ?? (Cache.services.length + 1), 'number'))}
+    `, async () => {
+      const payload = {
+        title: val('m-title'), description: val('m-desc'), icon: val('m-icon'),
+        features: val('m-features').split('\n').map(f => f.trim()).filter(Boolean),
+        is_popular: document.getElementById('m-popular').checked,
+        display_order: +val('m-order'), active: true
+      };
+      if (!payload.title) throw new Error('Title is required');
+      const mid = val('m-id');
+      if (mid) await DB.update('services', mid, payload);
+      else await DB.insert('services', payload);
+      Toast.show(`Service ${mid ? 'updated' : 'added'} ✓`);
+    });
+  },
+  editService(id) { Modal.openService(id); },
+
+  // ---- Team — ENHANCED with avatar customization ----
+  openTeam(id) {
+    const data = id ? Cache.team.find(m => String(m.id) === String(id)) : null;
+    const title = data ? 'Edit Team Member' : 'Add Team Member';
+    Modal.render('team-modal', title, `
+      <input type="hidden" id="m-id" value="${data?.id || ''}">
+      ${Modal.avatarPicker('tm', data)}
+      ${Modal.field('Name', Modal.input('m-name', data?.name))}
+      ${Modal.field('Role', Modal.input('m-role', data?.role))}
+      ${Modal.field('Bio', Modal.textarea('m-bio', data?.bio))}
+      <div class="border-t border-purple-500/20 pt-4">
+        <h3 class="font-semibold mb-3 text-sm text-gray-300">Social Media Links</h3>
+        <div class="space-y-2">
+          <div class="flex items-center gap-2"><i class="fab fa-linkedin text-blue-400 w-5"></i>${Modal.input('m-linkedin', data?.social_links?.linkedin, 'url', 'https://linkedin.com/in/...')}</div>
+          <div class="flex items-center gap-2"><i class="fab fa-twitter text-blue-300 w-5"></i>${Modal.input('m-twitter', data?.social_links?.twitter, 'url', 'https://twitter.com/...')}</div>
+          <div class="flex items-center gap-2"><i class="fab fa-instagram text-pink-400 w-5"></i>${Modal.input('m-instagram', data?.social_links?.instagram, 'url', 'https://instagram.com/...')}</div>
+        </div>
+      </div>
+      ${Modal.field('Display Order', Modal.input('m-order', data?.display_order ?? (Cache.team.length + 1), 'number'))}
+    `, async () => {
+      const avatarPayload = Modal.getAvatarPayload('tm');
+      if (avatarPayload.avatar_style === 'image' && !avatarPayload.avatar_url && !data?.avatar_url) {
+        throw new Error('Please upload an avatar image or choose a different style');
+      }
+      const payload = {
+        name: val('m-name'), role: val('m-role'), bio: val('m-bio'),
+        ...avatarPayload,
+        social_links: {
+          linkedin: val('m-linkedin') || null,
+          twitter: val('m-twitter') || null,
+          instagram: val('m-instagram') || null
+        },
+        display_order: +val('m-order'), active: true
+      };
+      if (!payload.name) throw new Error('Name is required');
+      // Preserve existing avatar_url if uploading and nothing changed
+      if (avatarPayload.avatar_style === 'image' && !avatarPayload.avatar_url) {
+        payload.avatar_url = data?.avatar_url;
+      }
+      const mid = val('m-id');
+      if (mid) await DB.update('team_members', mid, payload);
+      else await DB.insert('team_members', payload);
+      Toast.show(`Team member ${mid ? 'updated' : 'added'} ✓`);
+    });
+    Modal.attachAvatarEvents('tm', 'team-avatars', 'team');
+  },
+  editTeam(id) { Modal.openTeam(id); },
+
+  // ---- Testimonial — ENHANCED with avatar customization ----
+  openTestimonial(id) {
+    const data = id ? Cache.testimonials.find(t => String(t.id) === String(id)) : null;
+    const title = data ? 'Edit Testimonial' : 'Add Testimonial';
+    Modal.render('testimonial-modal', title, `
+      <input type="hidden" id="m-id" value="${data?.id || ''}">
+      ${Modal.avatarPicker('te', data)}
+      ${Modal.field('Client Name', Modal.input('m-name', data?.client_name))}
+      ${Modal.field('Role (optional)', Modal.input('m-role', data?.client_role))}
+      ${Modal.field('Company', Modal.input('m-company', data?.client_company))}
+      ${Modal.field('Testimonial Content', Modal.textarea('m-content', data?.content, 4))}
+      ${Modal.field('Rating (1–5)', Modal.input('m-rating', data?.rating || 5, 'number'))}
+      ${Modal.field('Display Order', Modal.input('m-order', data?.display_order ?? (Cache.testimonials.length + 1), 'number'))}
+    `, async () => {
+      const avatarPayload = Modal.getAvatarPayload('te');
+      const payload = {
+        client_name: val('m-name'), client_role: val('m-role') || null,
+        client_company: val('m-company'), content: val('m-content'),
+        rating: Math.min(5, Math.max(1, +val('m-rating'))),
+        ...avatarPayload,
+        display_order: +val('m-order'), active: true
+      };
+      if (avatarPayload.avatar_style === 'image' && !avatarPayload.avatar_url) {
+        payload.avatar_url = data?.avatar_url;
+      }
+      if (!payload.client_name) throw new Error('Client name is required');
+      const mid = val('m-id');
+      if (mid) await DB.update('testimonials', mid, payload);
+      else await DB.insert('testimonials', payload);
+      Toast.show(`Testimonial ${mid ? 'updated' : 'added'} ✓`);
+    });
+    Modal.attachAvatarEvents('te', 'testimonial-avatars', 'testimonials');
+  },
+  editTestimonial(id) { Modal.openTestimonial(id); },
+
+  // ---- Project — ENHANCED with image upload ----
+  openProject(id) {
+    const data = id ? Cache.projects.find(p => String(p.id) === String(id)) : null;
+    const title = data ? 'Edit Project' : 'Add Project';
+    Modal.render('project-modal', title, `
+      <input type="hidden" id="m-id" value="${data?.id || ''}">
+      ${Modal.field('Title', Modal.input('m-title', data?.title))}
+      ${Modal.field('Category', Modal.select('m-cat', [['videos','Videos'],['websites','Websites'],['graphics','Graphics'],['logos','Logos']], data?.category))}
+      ${Modal.field('Description', Modal.textarea('m-desc', data?.description, 2))}
+      ${Modal.field('Icon (emoji, used as fallback)', Modal.input('m-icon', data?.icon || '🎨'))}
+
+      <!-- NEW: Image upload -->
+      <div>
+        <label class="block text-sm font-medium mb-2 text-gray-300">Main Image</label>
+        <div class="border-2 border-dashed border-purple-500/30 rounded-xl p-4 text-center hover:border-purple-500/60 transition-all cursor-pointer" id="proj-upload-area">
+          <input type="file" id="proj-img-file" accept="image/*" class="hidden">
+          <i class="fas fa-image text-2xl text-purple-400 mb-1"></i>
+          <p class="text-xs text-gray-400">Click to upload main image</p>
+        </div>
+        ${data?.main_image ? `<div class="mt-2 text-center"><img src="${esc(data.main_image)}" class="w-24 h-16 object-cover rounded-lg mx-auto border border-purple-500/30" id="proj-img-preview"></div>` : `<div id="proj-img-preview" class="hidden mt-2 text-center"></div>`}
+        <input type="hidden" id="m-main-image" value="${esc(data?.main_image || '')}">
+      </div>
+
+      ${Modal.field('Video URL (YouTube/Vimeo embed)', Modal.input('m-video', data?.video_url, 'url', 'https://www.youtube.com/embed/...'))}
+      ${Modal.field('Before Image URL', Modal.input('m-before', data?.before_image, 'url'))}
+      ${Modal.field('After Image URL', Modal.input('m-after', data?.after_image, 'url'))}
+
+      ${Modal.field('Client', Modal.input('m-client', data?.client))}
+      ${Modal.field('Objective', Modal.textarea('m-objective', data?.objective, 2))}
+      ${Modal.field('Results', Modal.textarea('m-results', data?.results, 2))}
+      ${Modal.field('Tools Used', Modal.input('m-tools', data?.tools))}
+      ${Modal.field('External Link', Modal.input('m-link', data?.external_link, 'url'))}
+      ${Modal.checkbox('m-featured', data?.featured, 'Featured Project')}
+      ${Modal.field('Display Order', Modal.input('m-order', data?.display_order ?? (Cache.projects.length + 1), 'number'))}
+    `, async () => {
+      const payload = {
+        title: val('m-title'), category: val('m-cat'), description: val('m-desc'),
+        icon: val('m-icon'),
+        main_image: val('m-main-image') || null,
+        video_url: val('m-video') || null,
+        before_image: val('m-before') || null,
+        after_image: val('m-after') || null,
+        client: val('m-client') || null,
+        objective: val('m-objective') || null, results: val('m-results') || null,
+        tools: val('m-tools') || null, external_link: val('m-link') || null,
+        featured: document.getElementById('m-featured').checked,
+        display_order: +val('m-order'), active: true
+      };
+      if (!payload.title) throw new Error('Title is required');
+      const mid = val('m-id');
+      if (mid) await DB.update('projects', mid, payload);
+      else await DB.insert('projects', payload);
+      Toast.show(`Project ${mid ? 'updated' : 'added'} ✓`);
+    });
+
+    // Attach project image upload
+    setTimeout(() => {
+      const area = document.getElementById('proj-upload-area');
+      const file = document.getElementById('proj-img-file');
+      if (area && file) {
+        area.addEventListener('click', () => file.click());
+        file.addEventListener('change', async (e) => {
+          const f = e.target.files[0];
+          if (!f) return;
+          if (f.size > 5 * 1024 * 1024) { Toast.show('File too large (max 5MB)', 'error'); return; }
+          area.innerHTML = '<i class="fas fa-spinner fa-spin text-2xl text-purple-400"></i><p class="text-xs mt-1">Uploading…</p>';
+          try {
+            const url = await uploadImage(f, 'project-images', 'projects');
+            document.getElementById('m-main-image').value = url;
+            const preview = document.getElementById('proj-img-preview');
+            preview.innerHTML = `<img src="${url}" class="w-24 h-16 object-cover rounded-lg mx-auto border border-purple-500/30">`;
+            preview.classList.remove('hidden');
+            area.innerHTML = '<i class="fas fa-check text-2xl text-green-400"></i><p class="text-xs mt-1 text-gray-400">Uploaded! Click to change.</p>';
+            Toast.show('Image uploaded!');
+          } catch (err) {
+            Toast.show('Upload failed: ' + err.message, 'error');
+            area.innerHTML = '<i class="fas fa-image text-2xl text-purple-400"></i><p class="text-xs mt-1 text-gray-400">Click to upload</p>';
+          }
+        });
+      }
+    }, 100);
+  },
+  editProject(id) { Modal.openProject(id); },
+
+  // ---- Industry ----
+  openIndustry(id) {
+    const data = id ? Cache.industries.find(i => String(i.id) === String(id)) : null;
+    const title = data ? 'Edit Industry' : 'Add Industry';
+    Modal.render('industry-modal', title, `
+      <input type="hidden" id="m-id" value="${data?.id || ''}">
+      ${Modal.field('Industry Name', Modal.input('m-name', data?.name))}
+      ${Modal.field('Description', Modal.textarea('m-desc', data?.description))}
+      ${Modal.field('Icon (emoji)', Modal.input('m-icon', data?.icon || '🏢'))}
+      ${Modal.field('Features (one per line)', Modal.textarea('m-features', (data?.features || []).join('\n'), 4))}
+      ${Modal.field('Display Order', Modal.input('m-order', data?.display_order ?? (Cache.industries.length + 1), 'number'))}
+    `, async () => {
+      const payload = {
+        name: val('m-name'), description: val('m-desc'), icon: val('m-icon'),
+        features: val('m-features').split('\n').map(f => f.trim()).filter(Boolean),
+        display_order: +val('m-order'), active: true
+      };
+      if (!payload.name) throw new Error('Name is required');
+      const mid = val('m-id');
+      if (mid) await DB.update('industries', mid, payload);
+      else await DB.insert('industries', payload);
+      Toast.show(`Industry ${mid ? 'updated' : 'added'} ✓`);
+    });
+  },
+  editIndustry(id) { Modal.openIndustry(id); },
+
+  // ---- Pricing ----
+  openPricing(id) {
+    const data = id ? Cache.pricing.find(p => String(p.id) === String(id)) : null;
+    const title = data ? 'Edit Plan' : 'Add Pricing Plan';
+    Modal.render('pricing-modal', title, `
+      <input type="hidden" id="m-id" value="${data?.id || ''}">
+      ${Modal.field('Plan Name', Modal.input('m-name', data?.name))}
+      ${Modal.field('Price', Modal.input('m-price', data?.price, 'number'))}
+      ${Modal.field('Currency', Modal.input('m-currency', data?.currency || 'Rs'))}
+      ${Modal.field('Billing Interval', Modal.select('m-interval', [['month','Per Month'],['year','Per Year'],['one-time','One-time']], data?.interval || 'month'))}
+      ${Modal.field('Description', Modal.input('m-desc', data?.description))}
+      ${Modal.field('Features (JSON)', `<textarea id="m-features" rows="6" class="form-input w-full px-4 py-3 font-mono text-sm">${esc(JSON.stringify(data?.features || {}, null, 2))}</textarea><p class="text-xs text-gray-500 mt-1">e.g. {"posts":15,"graphics":5,"videos":0,"website":false}</p>`)}
+      ${Modal.field('Button Text', Modal.input('m-btn', data?.button_text || 'Get Started'))}
+      ${Modal.checkbox('m-popular', data?.is_popular, 'Mark as Popular')}
+      ${Modal.field('Display Order', Modal.input('m-order', data?.display_order ?? (Cache.pricing.length + 1), 'number'))}
+    `, async () => {
+      let features = {};
+      try { features = JSON.parse(val('m-features')); }
+      catch { throw new Error('Invalid JSON in Features field'); }
+      const payload = {
+        name: val('m-name'), price: +val('m-price'), currency: val('m-currency'),
+        interval: val('m-interval'), description: val('m-desc'), features,
+        button_text: val('m-btn'),
+        is_popular: document.getElementById('m-popular').checked,
+        display_order: +val('m-order'), active: true
+      };
+      if (!payload.name) throw new Error('Name is required');
+      const mid = val('m-id');
+      if (mid) await DB.update('pricing_plans', mid, payload);
+      else await DB.insert('pricing_plans', payload);
+      Toast.show(`Plan ${mid ? 'updated' : 'added'} ✓`);
+    });
+  },
+  editPricing(id) { Modal.openPricing(id); },
+
+  // ---- Addon ----
+  openAddon(id) {
+    const data = id ? Cache.addons.find(a => String(a.id) === String(id)) : null;
+    const title = data ? 'Edit Add-on' : 'Add Add-on';
+    Modal.render('addon-modal', title, `
+      <input type="hidden" id="m-id" value="${data?.id || ''}">
+      ${Modal.field('Name', Modal.input('m-name', data?.name))}
+      ${Modal.field('Description', Modal.input('m-desc', data?.description))}
+      ${Modal.field('Price (Rs)', Modal.input('m-price', data?.price, 'number'))}
+      ${Modal.field('Icon (emoji)', Modal.input('m-icon', data?.icon || '✨'))}
+      ${Modal.field('Price Text (e.g. per video)', Modal.input('m-ptext', data?.price_text))}
+      ${Modal.field('Display Order', Modal.input('m-order', data?.display_order ?? (Cache.addons.length + 1), 'number'))}
+    `, async () => {
+      const payload = {
+        name: val('m-name'), description: val('m-desc'),
+        price: +val('m-price'), icon: val('m-icon'),
+        price_text: val('m-ptext'), display_order: +val('m-order'), active: true
+      };
+      if (!payload.name) throw new Error('Name is required');
+      const mid = val('m-id');
+      if (mid) await DB.update('addons', mid, payload);
+      else await DB.insert('addons', payload);
+      Toast.show(`Add-on ${mid ? 'updated' : 'added'} ✓`);
+    });
+  },
+  editAddon(id) { Modal.openAddon(id); },
+
+  // ---- FAQ ----
+  openFaq(id) {
+    const data = id ? Cache.faqs.find(f => String(f.id) === String(id)) : null;
+    const title = data ? 'Edit FAQ' : 'Add FAQ';
+    Modal.render('faq-modal', title, `
+      <input type="hidden" id="m-id" value="${data?.id || ''}">
+      ${Modal.field('Question', Modal.input('m-question', data?.question))}
+      ${Modal.field('Answer', Modal.textarea('m-answer', data?.answer, 4))}
+      ${Modal.field('Category', Modal.select('m-cat', [['general','General'],['pricing','Pricing'],['services','Services'],['technical','Technical']], data?.category || 'general'))}
+      ${Modal.field('Display Order', Modal.input('m-order', data?.display_order ?? (Cache.faqs.length + 1), 'number'))}
+    `, async () => {
+      const payload = {
+        question: val('m-question'), answer: val('m-answer'),
+        category: val('m-cat'), display_order: +val('m-order'), active: true
+      };
+      if (!payload.question) throw new Error('Question is required');
+      const mid = val('m-id');
+      if (mid) await DB.update('faqs', mid, payload);
+      else await DB.insert('faqs', payload);
+      Toast.show(`FAQ ${mid ? 'updated' : 'added'} ✓`);
+    });
+  },
+  editFaq(id) { Modal.openFaq(id); },
+
+  // ---- NEW: Blog Post ----
+  openBlog(id) {
+    const data = id ? Cache.blogPosts.find(p => String(p.id) === String(id)) : null;
+    const title = data ? 'Edit Blog Post' : 'New Blog Post';
+    Modal.render('blog-modal', title, `
+      <input type="hidden" id="m-id" value="${data?.id || ''}">
+      ${Modal.field('Title', Modal.input('m-title', data?.title))}
+      ${Modal.field('Slug (URL-friendly)', Modal.input('m-slug', data?.slug, 'text', 'my-blog-post-title'))}
+      ${Modal.field('Author', Modal.input('m-author', data?.author || 'Gracelight Team'))}
+      ${Modal.field('Category', Modal.select('m-cat', [['marketing','Marketing'],['design','Design'],['business','Business'],['tips','Tips']], data?.category || 'marketing'))}
+      ${Modal.field('Excerpt (short preview)', Modal.textarea('m-excerpt', data?.excerpt, 3))}
+      ${Modal.field('Content (full article)', Modal.textarea('m-content', data?.content, 8))}
+
+      <!-- Featured Image upload -->
+      <div>
+        <label class="block text-sm font-medium mb-2 text-gray-300">Featured Image</label>
+        <div class="border-2 border-dashed border-purple-500/30 rounded-xl p-4 text-center hover:border-purple-500/60 transition-all cursor-pointer" id="blog-upload-area">
+          <input type="file" id="blog-img-file" accept="image/*" class="hidden">
+          <i class="fas fa-image text-2xl text-purple-400 mb-1"></i>
+          <p class="text-xs text-gray-400">Click to upload featured image</p>
+        </div>
+        ${data?.featured_image ? `<img src="${esc(data.featured_image)}" class="mt-2 w-32 h-20 object-cover rounded-lg mx-auto" id="blog-img-preview">` : `<div id="blog-img-preview" class="hidden mt-2 text-center"></div>`}
+        <input type="hidden" id="m-featured-image" value="${esc(data?.featured_image || '')}">
+      </div>
+
+      ${Modal.field('Read Time (minutes)', Modal.input('m-read-time', data?.read_time || 5, 'number'))}
+      ${Modal.checkbox('m-active', data?.active !== false, 'Published (visible to visitors)')}
+    `, async () => {
+      let slug = val('m-slug');
+      if (!slug) {
+        slug = val('m-title').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      }
+      const payload = {
+        title: val('m-title'), slug,
+        author: val('m-author') || 'Gracelight Team',
+        category: val('m-cat'),
+        excerpt: val('m-excerpt') || null,
+        content: val('m-content') || null,
+        featured_image: val('m-featured-image') || null,
+        read_time: +val('m-read-time') || 5,
+        active: document.getElementById('m-active').checked
+      };
+      if (!payload.title) throw new Error('Title is required');
+      const mid = val('m-id');
+      if (mid) await DB.update('blog_posts', mid, payload);
+      else await DB.insert('blog_posts', payload);
+      Toast.show(`Blog post ${mid ? 'updated' : 'created'} ✓`);
+    });
+
+    // Blog image upload
+    setTimeout(() => {
+      const area = document.getElementById('blog-upload-area');
+      const file = document.getElementById('blog-img-file');
+      if (area && file) {
+        area.addEventListener('click', () => file.click());
+        file.addEventListener('change', async (e) => {
+          const f = e.target.files[0];
+          if (!f) return;
+          if (f.size > 5 * 1024 * 1024) { Toast.show('File too large (max 5MB)', 'error'); return; }
+          area.innerHTML = '<i class="fas fa-spinner fa-spin text-2xl text-purple-400"></i><p class="text-xs mt-1">Uploading…</p>';
+          try {
+            const url = await uploadImage(f, 'blog-images', 'blog');
+            document.getElementById('m-featured-image').value = url;
+            const preview = document.getElementById('blog-img-preview');
+            preview.innerHTML = `<img src="${url}" class="w-32 h-20 object-cover rounded-lg mx-auto">`;
+            preview.classList.remove('hidden');
+            area.innerHTML = '<i class="fas fa-check text-2xl text-green-400"></i><p class="text-xs mt-1 text-gray-400">Uploaded!</p>';
+            Toast.show('Image uploaded!');
+          } catch (err) {
+            Toast.show('Upload failed: ' + err.message, 'error');
+            area.innerHTML = '<i class="fas fa-image text-2xl text-purple-400"></i><p class="text-xs mt-1 text-gray-400">Click to upload</p>';
+          }
+        });
+      }
+    }, 100);
+  },
+  editBlog(id) { Modal.openBlog(id); }
+};
+
+// ============================================================
+// APP MODULE
+// ============================================================
+const App = {
+  showLogin() {
+    document.getElementById('login-page').classList.remove('hidden');
+    document.getElementById('dashboard').classList.add('hidden');
+  },
+
+  showDashboard() {
+    document.getElementById('login-page').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    if (Auth.user) {
+      setText('admin-name', Auth.user.name || 'Admin');
+      setText('admin-email', Auth.user.email || '');
+    }
+    App.switchSection('dashboard');
+    DB.loadAll().catch(err => Toast.show('Failed to load data: ' + err.message, 'error'));
+  },
+
+  switchSection(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+    document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+    document.getElementById(`${name}-section`)?.classList.remove('hidden');
+    document.querySelector(`[data-section="${name}"]`)?.classList.add('active');
+    closeMobileSidebar();
+  }
+};
+
+// ============================================================
+// GLOBAL HELPERS
+// ============================================================
+function val(id) { return (document.getElementById(id)?.value || '').trim(); }
+function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
+function esc(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function confirmDelete(table, id) {
+  if (!confirm('Are you sure? This cannot be undone.')) return;
+  try {
+    await DB.remove(table, id);
+    Toast.show('Deleted successfully');
+    await DB.loadAll();
+  } catch (err) {
+    Toast.show(err.message || 'Delete failed', 'error');
+  }
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+
+// Login form
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in…';
+  err.classList.add('hidden');
+  try {
+    await Auth.login(
+      document.getElementById('login-email').value,
+      document.getElementById('login-password').value
+    );
+    App.showDashboard();
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+  }
+});
+
+// Logout
+document.getElementById('logout-btn').addEventListener('click', Auth.logout);
+
+// Sidebar navigation
+document.querySelectorAll('.sidebar-link').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    App.switchSection(link.dataset.section);
+  });
+});
+
+// Site settings form
+
+// Site settings form
+document.getElementById('site-settings-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('[type=submit]');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+  try {
+    await DB.saveSettings({
+      hero_headline:   val('s-hero-headline'),
+      hero_subheading: val('s-hero-subheading'),
+      contact_email:   val('s-contact-email'),
+      contact_phone:   val('s-contact-phone'),
+      whatsapp_number: val('s-whatsapp')
+    });
+    Toast.show('Settings saved ✓');
+  } catch (err) {
+    Toast.show(err.message || 'Save failed', 'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
+  }
+});
+
+// ============================================================
+// MOBILE SIDEBAR
+// ============================================================
+function openMobileSidebar() {
+  document.getElementById('admin-sidebar').classList.add('mobile-open');
+  document.getElementById('mobile-overlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeMobileSidebar() {
+  document.getElementById('admin-sidebar').classList.remove('mobile-open');
+  document.getElementById('mobile-overlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// ============================================================
+// MOUSE CRUISER (DASHBOARD)
+// ============================================================
+function initDashCruiser() {
+  const ring = document.getElementById('dash-cruiser'); if (!ring) return;
+  let mx = -200, my = -200, cx = -200, cy = -200;
+  if (window.matchMedia('(hover: none)').matches) { ring.style.display='none'; return; }
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+  document.addEventListener('mousedown', () => ring.classList.add('clicking'));
+  document.addEventListener('mouseup', () => ring.classList.remove('clicking'));
+  document.addEventListener('mouseover', e => {
+    if (e.target.closest('a,button,input,select,textarea,.card')) ring.classList.add('hovered');
+  });
+  document.addEventListener('mouseout', e => {
+    if (e.target.closest('a,button,input,select,textarea,.card')) ring.classList.remove('hovered');
+  });
+  function animate() {
+    cx += (mx - cx) * 0.2;
+    cy += (my - cy) * 0.2;
+    ring.style.left = cx + 'px';
+    ring.style.top  = cy + 'px';
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+// Patch unread badge for mobile
+const _origRenderDashboard = Render.dashboard.bind(Render);
+Render.dashboard = function() {
+  _origRenderDashboard();
+  const unread = Cache.messages.filter(m => m.status === 'unread').length;
+  const mobileUnread = document.getElementById('mobile-unread');
+  const mobileCount = document.getElementById('mobile-unread-count');
+  if (mobileUnread && mobileCount) {
+    if (unread > 0) { mobileCount.textContent = unread; mobileUnread.classList.remove('hidden'); }
+    else mobileUnread.classList.add('hidden');
+  }
+};
+
+// Initialize
+Auth.init();
+initDashCruiser();
+</script>
+</body>
+</html>
