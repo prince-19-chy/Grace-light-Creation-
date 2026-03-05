@@ -272,6 +272,9 @@
         <a href="#" data-section="newsletter" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
           <i class="fas fa-paper-plane w-5 text-center"></i><span>Newsletter</span>
         </a>
+        <a href="#" data-section="audit-log" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300">
+          <i class="fas fa-history w-5 text-center"></i><span>Audit Log</span>
+        </a>
       </nav>
     </div>
     <!-- User info + logout -->
@@ -559,6 +562,42 @@
         <div class="card p-6"><div id="newsletter-list" class="space-y-3"><div class="skeleton h-12 w-full"></div></div></div>
       </section>
 
+      <!-- ---- AUDIT LOG ---- -->
+      <section id="audit-log-section" class="section hidden">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h1 class="text-3xl font-bold">Audit Log</h1>
+            <p class="text-sm text-gray-400 mt-1">Tracks all changes made to team members and other records</p>
+          </div>
+          <div class="flex gap-3 items-center">
+            <select id="audit-filter-action" class="form-input px-3 py-2 text-sm rounded-lg">
+              <option value="">All Actions</option>
+              <option value="UPDATE_TEAM_MEMBER">Update Team Member</option>
+              <option value="INSERT_TEAM_MEMBER">Add Team Member</option>
+              <option value="DELETE">Delete</option>
+              <option value="UPDATE">Update (Other)</option>
+            </select>
+            <button onclick="AuditLog.load()" class="btn-secondary px-4 py-2 rounded-xl text-sm flex items-center gap-2">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+          </div>
+        </div>
+        <!-- SQL Setup Notice -->
+       
+        <div class="card p-6">
+          <div id="audit-log-list" class="space-y-3">
+            <div class="skeleton h-14 w-full rounded-lg"></div>
+            <div class="skeleton h-14 w-full rounded-lg"></div>
+            <div class="skeleton h-14 w-full rounded-lg"></div>
+          </div>
+          <div id="audit-log-empty" class="hidden text-center py-16 text-gray-500">
+            <i class="fas fa-history text-5xl mb-4 block opacity-30"></i>
+            <p>No audit entries found.</p>
+            <p class="text-xs mt-1">Audit entries are created when you save changes to records.</p>
+          </div>
+        </div>
+      </section>
+
     </div>
   </div>
 </div>
@@ -668,8 +707,19 @@ const DB = {
   },
 
   async update(table, id, payload) {
+    // Fetch old record for diff (non-blocking on failure)
+    let oldRecord = null;
+    try {
+      const { data } = await sb.from(table).select('*').eq('id', id).single();
+      oldRecord = data;
+    } catch (_) {}
+
     const { data, error } = await sb.from(table).update(payload).eq('id', id).select().single();
     if (error) throw error;
+
+    // ✅ Async audit log — does NOT block the save operation
+    AuditLog.record(table, id, payload, oldRecord).catch(() => {});
+
     return data;
   },
 
@@ -1186,7 +1236,7 @@ const Modal = {
         <div class="grid grid-cols-3 gap-3">
           ${[['gradient','Gradient','<div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mx-auto mb-1"></div>'],
              ['image','Upload','<i class="fas fa-upload text-purple-400 text-xl block text-center mb-1"></i>'],
-             ['emoji','Emoji','<div class="text-2xl text-center mb-1">${data?.custom_emoji || "👤"}</div>']].map(([v, l, ico]) => `
+             ['emoji','Emoji',`<div class="text-2xl text-center mb-1">${data?.custom_emoji || '👤'}</div>`]].map(([v, l, ico]) => `
             <label class="cursor-pointer">
               <input type="radio" name="${prefix}-avatar-style" value="${v}" ${style === v ? 'checked' : ''} class="hidden ${prefix}-avatar-radio">
               <div class="p-3 rounded-xl border-2 ${style === v ? 'border-purple-500 bg-purple-500/20' : 'border-purple-500/30'} hover:border-purple-500/60 transition-all text-center text-sm">
@@ -1250,28 +1300,46 @@ const Modal = {
         });
       });
 
-      // Image upload
+      // Image upload — uses a persistent <input type="file"> to survive innerHTML rewrites
       const uploadArea = document.getElementById(`${prefix}-upload-area`);
-      const fileInput = document.getElementById(`${prefix}-avatar-file`);
-      if (uploadArea && fileInput) {
-        uploadArea.addEventListener('click', () => fileInput.click());
+      const fileInput  = document.getElementById(`${prefix}-avatar-file`);
+      const urlInput   = document.getElementById(`${prefix}-avatar-url`);
+
+      if (uploadArea && fileInput && urlInput) {
+        // Re-wire click every time (uploadArea innerHTML may have been reset)
+        function bindUploadClick() {
+          uploadArea.onclick = () => fileInput.click();
+        }
+        bindUploadClick();
+
         fileInput.addEventListener('change', async (e) => {
           const file = e.target.files[0];
           if (!file) return;
           if (file.size > 2 * 1024 * 1024) { Toast.show('File too large (max 2MB)', 'error'); return; }
 
+          // Show spinner BEFORE async work; re-bind click after innerHTML swap
           uploadArea.innerHTML = '<i class="fas fa-spinner fa-spin text-3xl text-purple-400"></i><p class="text-sm mt-2">Uploading…</p>';
+          bindUploadClick();
+
           try {
             const url = await uploadImage(file, bucket, folder);
-            document.getElementById(`${prefix}-avatar-url`).value = url;
+
+            // ✅ Critical: persist URL in the hidden field so getAvatarPayload() picks it up
+            urlInput.value = url;
+
             const preview = document.getElementById(`${prefix}-avatar-preview`);
-            preview.innerHTML = `<img src="${url}" class="w-16 h-16 rounded-full mx-auto object-cover border-2 border-purple-500/50">`;
-            preview.classList.remove('hidden');
+            if (preview) {
+              preview.innerHTML = `<img src="${url}" class="w-16 h-16 rounded-full mx-auto object-cover border-2 border-purple-500/50" alt="Avatar preview">`;
+              preview.classList.remove('hidden');
+            }
+
             uploadArea.innerHTML = '<i class="fas fa-check text-3xl text-green-400"></i><p class="text-sm mt-2 text-gray-400">Uploaded! Click to change.</p>';
-            Toast.show('Avatar uploaded!');
+            bindUploadClick();
+            Toast.show('Avatar uploaded! ✓');
           } catch (err) {
             Toast.show('Upload failed: ' + err.message, 'error');
             uploadArea.innerHTML = '<i class="fas fa-cloud-upload-alt text-3xl text-purple-400"></i><p class="text-sm mt-2 text-gray-400">Click to upload</p>';
+            bindUploadClick();
           }
         });
       }
@@ -1280,22 +1348,38 @@ const Modal = {
 
   getAvatarPayload(prefix) {
     const style = document.querySelector(`input[name="${prefix}-avatar-style"]:checked`)?.value || 'gradient';
+
+    // Helper: derive initials fallback from name field (m-name) so NOT NULL is never violated
+    const nameField = document.getElementById('m-name');
+    const nameFallback = nameField?.value?.trim() || '';
+    const initialsFromName = nameFallback
+      .split(' ').filter(Boolean).slice(0, 2)
+      .map(w => w[0]).join('').toUpperCase() || '??';
+
     if (style === 'gradient') {
+      const typed = val(`${prefix}-initials`).toUpperCase().slice(0, 2);
       return {
         avatar_style: 'gradient',
         color_gradient: val(`${prefix}-gradient`),
-        initials: val(`${prefix}-initials`).toUpperCase().slice(0, 2),
-        avatar_url: null, custom_emoji: null
+        initials: typed || initialsFromName,   // never empty/null
+        avatar_url: null,
+        custom_emoji: '👤'                     // satisfy any NOT NULL on this col too
       };
     } else if (style === 'image') {
       const url = val(`${prefix}-avatar-url`);
-      return { avatar_style: 'image', avatar_url: url || null, initials: null, custom_emoji: null };
+      return {
+        avatar_style: 'image',
+        avatar_url: url || null,
+        initials: initialsFromName,            // ✅ required — satisfies NOT NULL constraint
+        custom_emoji: '👤'
+      };
     } else {
       return {
         avatar_style: 'emoji',
         custom_emoji: val(`${prefix}-custom-emoji`) || '👤',
         color_gradient: 'from-purple-500 to-pink-500',
-        avatar_url: null, initials: null
+        avatar_url: null,
+        initials: initialsFromName             // ✅ required — satisfies NOT NULL constraint
       };
     }
   },
@@ -1711,6 +1795,139 @@ const Modal = {
 };
 
 // ============================================================
+// AUDIT LOG MODULE
+// ============================================================
+const AuditLog = {
+  /**
+   * Record an audit entry for an update operation.
+   * Computes a diff of changed fields only (field: {old, new}).
+   * Runs asynchronously — call with .catch(() => {}) to avoid blocking saves.
+   */
+  async record(table, entityId, newValues, oldRecord) {
+    const changes = {};
+    const SKIP_FIELDS = ['updated_at', 'created_at'];
+
+    // Build diff: only fields that actually changed
+    for (const [key, newVal] of Object.entries(newValues)) {
+      if (SKIP_FIELDS.includes(key)) continue;
+      const oldVal = oldRecord ? oldRecord[key] : undefined;
+      // Stringify for comparison to handle object/array fields (like social_links)
+      const oldStr = JSON.stringify(oldVal ?? null);
+      const newStr = JSON.stringify(newVal ?? null);
+      if (oldStr !== newStr) {
+        changes[key] = { old: oldVal ?? null, new: newVal ?? null };
+      }
+    }
+
+    // Nothing changed? Skip logging
+    if (Object.keys(changes).length === 0) return;
+
+    // Determine action label — special-case team members
+    const action = table === 'team_members'
+      ? 'UPDATE_TEAM_MEMBER'
+      : `UPDATE_${table.toUpperCase()}`;
+
+    // Get current user email from Supabase auth session
+    const { data: { user } } = await sb.auth.getUser();
+    const userId = user?.email || user?.id || 'unknown';
+
+    await sb.from('audit_logs').insert([{
+      user_id:   userId,
+      timestamp: new Date().toISOString(),
+      action,
+      entity_id: String(entityId),
+      changes:   changes
+    }]);
+  },
+
+  /** Load and render audit log entries into the section */
+  async load() {
+    const listEl  = document.getElementById('audit-log-list');
+    const emptyEl = document.getElementById('audit-log-empty');
+    const filter  = document.getElementById('audit-filter-action')?.value || '';
+
+    listEl.innerHTML = '<div class="skeleton h-14 w-full rounded-lg"></div>'.repeat(4);
+    emptyEl.classList.add('hidden');
+
+    try {
+      let query = sb.from('audit_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(100);
+
+      if (filter) query = query.eq('action', filter);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        listEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        return;
+      }
+
+      listEl.innerHTML = data.map(entry => {
+        const ts = new Date(entry.timestamp).toLocaleString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+
+        const actionColor = entry.action.includes('TEAM') ? 'text-purple-400'
+          : entry.action.includes('DELETE') ? 'text-red-400'
+          : entry.action.includes('INSERT') ? 'text-green-400'
+          : 'text-blue-400';
+
+        const changes = entry.changes || {};
+        const changedFields = Object.keys(changes);
+
+        const diffHtml = changedFields.slice(0, 5).map(field => {
+          const { old: oldVal, new: newVal } = changes[field];
+          const oldStr = typeof oldVal === 'object'
+            ? JSON.stringify(oldVal) : String(oldVal ?? '—');
+          const newStr = typeof newVal === 'object'
+            ? JSON.stringify(newVal) : String(newVal ?? '—');
+          const truncate = s => s.length > 60 ? s.slice(0, 60) + '…' : s;
+          return `<div class="flex gap-2 items-start text-xs mt-1">
+            <span class="text-gray-500 min-w-24 flex-shrink-0">${esc(field)}:</span>
+            <span class="text-red-400/80 line-through truncate">${esc(truncate(oldStr))}</span>
+            <span class="text-gray-500 flex-shrink-0">→</span>
+            <span class="text-green-400/90 truncate">${esc(truncate(newStr))}</span>
+          </div>`;
+        }).join('');
+
+        const extraCount = changedFields.length > 5 ? changedFields.length - 5 : 0;
+
+        return `<div class="border border-purple-500/20 rounded-xl p-4 hover:border-purple-500/40 transition-all bg-slate-900/30">
+          <div class="flex items-start justify-between gap-4 flex-wrap">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-purple-900/50 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-user text-purple-400 text-xs"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-semibold text-sm">${esc(entry.user_id || 'unknown')}</span>
+                  <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-900/40 ${actionColor}">${esc(entry.action)}</span>
+                  ${entry.entity_id ? `<span class="text-xs text-gray-500">ID: ${esc(entry.entity_id)}</span>` : ''}
+                </div>
+                ${changedFields.length ? `<div class="mt-1">${diffHtml}${extraCount ? `<div class="text-xs text-gray-500 mt-1">+${extraCount} more field(s) changed</div>` : ''}</div>` : '<div class="text-xs text-gray-500 mt-1">No field-level diff recorded</div>'}
+              </div>
+            </div>
+            <div class="text-xs text-gray-500 flex-shrink-0 text-right">${ts}</div>
+          </div>
+        </div>`;
+      }).join('');
+
+    } catch (err) {
+      listEl.innerHTML = `<div class="text-center py-8 text-red-400">
+        <i class="fas fa-exclamation-triangle text-2xl mb-2 block"></i>
+        <p class="text-sm">Failed to load audit log: ${esc(err.message)}</p>
+        <p class="text-xs text-gray-500 mt-1">Make sure the audit_logs table exists (see setup SQL above).</p>
+      </div>`;
+    }
+  }
+};
+
+// ============================================================
 // APP MODULE
 // ============================================================
 const App = {
@@ -1736,6 +1953,8 @@ const App = {
     document.getElementById(`${name}-section`)?.classList.remove('hidden');
     document.querySelector(`[data-section="${name}"]`)?.classList.add('active');
     closeMobileSidebar();
+    // Lazy-load audit log when its section is opened
+    if (name === 'audit-log') AuditLog.load();
   }
 };
 
@@ -1874,6 +2093,9 @@ Render.dashboard = function() {
     else mobileUnread.classList.add('hidden');
   }
 };
+
+// Audit log filter change
+document.getElementById('audit-filter-action')?.addEventListener('change', () => AuditLog.load());
 
 // Initialize
 Auth.init();
